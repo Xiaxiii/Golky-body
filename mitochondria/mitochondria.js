@@ -12,7 +12,7 @@ const MAIN = function (TOKEN) {
     // 脚本被重新运行时，先把上一次的清理干净，避免重复
     try { if (W.__cbg2 && W.__cbg2.destroy) W.__cbg2.destroy(); } catch (e) {}
 
-    const VERSION = '2026-11-02a';
+    const VERSION = '2026-11-02b';
     const report = (where, err) => {
         try { console.error('[线粒体]', where, err); } catch (e) {}
         try { if (W.toastr) W.toastr.error(String((err && err.message) || err), '线粒体出错：' + where); } catch (e) {}
@@ -71,16 +71,20 @@ const MAIN = function (TOKEN) {
     const style = D.createElement('style');
     style.id = ID.style;
     style.textContent = `
+        /* 图层的样式都加 !important，会变的那些（图、模糊、亮度…）由脚本写在元素上，也带 !important：
+           美化里写了 filter / display 之类的 !important 规则时，照样压得过 */
         #${ID.fill}, #${ID.bg}, #${ID.veil} {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
-            pointer-events: none; display: none; z-index: 10;
+            position: fixed !important; top: 0 !important; left: 0 !important; right: auto !important; bottom: auto !important;
+            width: 100vw !important; height: 100dvh !important; margin: 0 !important; padding: 0 !important;
+            pointer-events: none !important; display: none; z-index: 10 !important;
+            opacity: 1 !important; visibility: visible !important;
         }
-        #${ID.fill}, #${ID.bg} { background-repeat: no-repeat; background-position: center; transition: filter .3s ease; }
+        #${ID.fill}, #${ID.bg} { background-repeat: no-repeat !important; background-position: center; transition: filter .3s ease !important; }
         /* 背景单独放一层，聊天滚动时不用跟着重画，手机上不卡 */
-        #${ID.fill}, #${ID.bg}, #${ID.veil} { transform: translateZ(0); backface-visibility: hidden; contain: strict; }
+        #${ID.fill}, #${ID.bg}, #${ID.veil} { transform: translateZ(0) !important; backface-visibility: hidden !important; contain: strict !important; }
         /* 两边补齐用的虚化层比屏幕大一圈：模糊会把边缘变透明，放大后透明的边在屏幕外面 */
-        #${ID.fill} { background-size: cover; top: -48px; left: -48px; width: calc(100vw + 96px); height: calc(100dvh + 96px); }
-        #${ID.veil} { transition: background .3s ease; }
+        #${ID.fill} { background-size: cover !important; top: -48px !important; left: -48px !important; width: calc(100vw + 96px) !important; height: calc(100dvh + 96px) !important; }
+        #${ID.veil} { transition: background .3s ease !important; }
 
         /* 魔棒菜单里的入口：和别的扩展一样「图标 + 名字」，图标放进同一列 */
         #${ID.btn} .extensionsMenuExtensionButton { align-self: center; }
@@ -266,6 +270,9 @@ const MAIN = function (TOKEN) {
             background: var(--c-s1) center / cover no-repeat;
         }
         ${P} .now .t1 { font-weight: 600; }
+
+        /* 背景被别的整屏图盖住时的提示 */
+        ${P} .warn { margin: 10px 0 2px; padding: 10px 12px; border-radius: 10px; background: var(--c-s1); font-size: 13px; line-height: 1.5; }
 
         /* 最下面的「恢复默认」 */
         ${P} .foot { padding-top: 6px; }
@@ -504,7 +511,7 @@ const MAIN = function (TOKEN) {
         if (!c) { c = {}; styleCache.set(el, c); }
         if (c[prop] === val) return;
         c[prop] = val;
-        el.style[prop] = val;
+        el.style.setProperty(prop, val, 'important');
     };
 
     const show = (on) => {
@@ -520,11 +527,73 @@ const MAIN = function (TOKEN) {
         let fit = cfg.fit;
         if (fit === 'auto') fit = (sa > 1 && cur.a < sa / 1.6) ? 'contain' : 'cover';
         curFit = fit;
-        setStyle(bg, 'backgroundSize', fit);
-        setStyle(bg, 'backgroundPosition', fit === 'cover' ? `center ${cfg.posY}%` : 'center center');
+        setStyle(bg, 'background-size', fit);
+        setStyle(bg, 'background-position', fit === 'cover' ? `center ${cfg.posY}%` : 'center center');
         setStyle(fill, 'display', fit === 'contain' && bg.style.display === 'block' ? 'block' : 'none');
         const row = D.querySelector(P + ' [data-row="posY"]');
         if (row) row.classList.toggle('off', fit === 'contain');
+    };
+
+    // 有的角色卡美化、插件会自己铺一张整屏的图，压在线粒体这层上面：这时这里调亮度、模糊都看不出变化。
+    // 在屏幕上取几个点，看线粒体这层上面有没有整屏的图片，有就在面板里说出来是哪个元素
+    const describeEl = (el) => {
+        if (el.id) return '#' + el.id;
+        const c = typeof el.className === 'string' ? el.className.trim().split(/\s+/)[0] : '';
+        return el.tagName.toLowerCase() + (c ? '.' + c : '');
+    };
+    const paintsPicture = (el) => {
+        if (/^(IMG|VIDEO|CANVAS)$/.test(el.tagName)) return true;
+        const cs = W.getComputedStyle(el);
+        if (+cs.opacity < 0.9 || !/url\(/.test(cs.backgroundImage)) return false;
+        // 平铺的小纹理（纸纹、噪点）不算，只算铺满的大图
+        return /no-repeat/.test(cs.backgroundRepeat) || /cover|contain/.test(cs.backgroundSize);
+    };
+    const findCover = () => {
+        if (bg.style.display !== 'block') return null;
+        const vw = W.innerWidth, vh = W.innerHeight;
+        const p = panelEl();
+        // 背景层平时不接收点击，elementsFromPoint 会跳过它；量的这一下临时打开
+        bg.style.setProperty('pointer-events', 'auto', 'important');
+        try {
+            for (const [fx0, fy0] of [[0.3, 0.35], [0.5, 0.5], [0.3, 0.7]]) {
+                const stack = D.elementsFromPoint(vw * fx0, vh * fy0);
+                const i = stack.indexOf(bg);
+                for (const el of (i < 0 ? stack : stack.slice(0, i))) {
+                    if (el === ball || el === bg || el === veil || el === fill || (p && p.contains(el))) continue;
+                    const r = el.getBoundingClientRect();
+                    if (r.width * r.height < vw * vh * 0.85) continue;
+                    if (paintsPicture(el)) return el;
+                    if (el.tagName === 'IFRAME') {
+                        try {
+                            const d = el.contentDocument;
+                            if (d && (paintsPicture(d.documentElement) || (d.body && paintsPicture(d.body)))) return el;
+                        } catch (e) {}
+                    }
+                }
+            }
+        } finally {
+            bg.style.removeProperty('pointer-events');
+        }
+        return null;
+    };
+    const showCover = () => {
+        const w = D.querySelector(P + ' .warn');
+        if (!w) return;
+        let el = null;
+        try { el = cfg.enabled && cfg.tab !== 'jump' ? findCover() : null; } catch (e) {}
+        w.hidden = !el;
+        if (!el) return;
+        const mes = el.closest && el.closest('#chat .mes[mesid]');
+        const from = mes
+            ? `来自 #${mes.getAttribute('mesid')} 楼的消息，多半是角色卡美化自带的背景`
+            : `来自 ${describeEl(el)}，多半是美化或别的插件放的背景`;
+        w.textContent = `线粒体的背景上面还盖着一张整屏的图，${from}。这里调的是下面那层，所以看不出变化；关掉那张图就能看到效果。`;
+    };
+    let coverTimer = null;
+    const checkCoverSoon = () => {
+        if (!isOpen()) return;
+        clearTimeout(coverTimer);
+        coverTimer = setTimeout(showCover, 300);
     };
 
     const apply = async () => {
@@ -567,13 +636,14 @@ const MAIN = function (TOKEN) {
         }
 
         if (pick.url !== cur.url) {
-            bg.style.backgroundImage = `url("${pick.url}")`;
-            fill.style.backgroundImage = `url("${pick.url}")`;
+            setStyle(bg, 'background-image', `url("${pick.url}")`);
+            setStyle(fill, 'background-image', `url("${pick.url}")`);
         }
         cur = pick;
         show(true);
         layout();
         setNow(pick.title, pick.sub, pick.url);
+        checkCoverSoon();
     };
 
     let timer = null;
@@ -722,6 +792,9 @@ const MAIN = function (TOKEN) {
         p.querySelectorAll('[data-when-custom]').forEach((el) => { el.hidden = cfg.source !== 'custom'; });
         const foot = p.querySelector('.foot');
         if (foot) foot.hidden = cfg.tab === 'jump';
+        const warn = p.querySelector('.warn');
+        if (warn && cfg.tab === 'jump') warn.hidden = true;
+        else if (warn) checkCoverSoon();
         const row = p.querySelector('[data-row="posY"]');
         if (row) row.classList.toggle('off', curFit === 'contain');
     };
@@ -771,6 +844,7 @@ const MAIN = function (TOKEN) {
             </div>
 
             <div class="body">
+                <div class="warn" role="status" hidden></div>
                 <div class="pane" data-pane="jump">
                     <div class="row">
                         <div class="jump">
@@ -1186,6 +1260,7 @@ const MAIN = function (TOKEN) {
             clearTimeout(timer);
             clearTimeout(rt);
             clearTimeout(openGuard);
+            clearTimeout(coverTimer);
             W.removeEventListener('resize', onResize);
             if (vvp) vvp.removeEventListener('resize', onResize);
             D.removeEventListener('pointerdown', onOutside, true);
