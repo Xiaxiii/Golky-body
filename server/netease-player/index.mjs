@@ -9,6 +9,13 @@ import { callNcm, getSongUrl, mapTrack, parseCookieString, LEVELS } from './lib.
 
 const PLUGIN_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(PLUGIN_DIR, 'data');
+const PLUGIN_VERSION = (() => {
+    try {
+        return JSON.parse(fs.readFileSync(path.join(PLUGIN_DIR, 'package.json'), 'utf8')).version || '';
+    } catch {
+        return '';
+    }
+})();
 
 export const info = {
     id: 'netease-player',
@@ -188,7 +195,7 @@ export async function init(router) {
 
     route(router, '/status', async (req) => {
         const account = await fetchAccount(req);
-        return account ? { loggedIn: true, ...account } : { loggedIn: false };
+        return { pluginVersion: PLUGIN_VERSION, ...(account ? { loggedIn: true, ...account } : { loggedIn: false }) };
     });
 
     route(router, '/qr/start', async (req) => {
