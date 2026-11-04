@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS = {
     level: 'standard',
     entry: 'float', // float 悬浮胶囊 | bar 输入框上方的迷你播放条 | off 只从魔法棒菜单或扩展设置打开
     glass: 'auto', // auto 跟随主题 | light 浅色玻璃 | dark 深色玻璃
+    glassFx: 'clear', // clear 通透（背景模糊） | solid 不透明
 };
 
 // ---------- localStorage（读写都可能抛错） ----------
@@ -350,6 +351,7 @@ let panelModule = null;
 
 export async function openPanel() {
     miniBar.show();
+    collapseFloat();
     try {
         const panel = await loadPanel();
         panelModule = panel;
@@ -360,16 +362,18 @@ export async function openPanel() {
     }
 }
 
-// ---------- 液态玻璃配色 ----------
+// ---------- 液态玻璃 ----------
 
-// 悬浮胶囊、迷你播放条和展开面板共用。不跟主题的透明底色走（透明主题下看不清字），
-// 按主题文字颜色判断深浅：文字深 → 浅色玻璃，文字浅 → 深色玻璃；设置里可以手动指定。
-// 不用 backdrop-filter：iPhone 上固定在聊天记录上方的毛玻璃，每滑一帧都要重新模糊，整页会卡。
-// 底色接近不透明，玻璃感来自顶部高光、边缘反光和投影。
+// 悬浮胶囊、迷你播放条和展开面板共用。
+// - 颜色：按主题文字颜色判断深浅（文字深 → 浅色玻璃），设置里可以手动指定。
+// - 质感：默认「通透」，用背景模糊 + 提高饱和度，底色半透明；「不透明」不做模糊，底色接近实色。
+//   模糊只在胶囊（很小）和面板（打开时背后的聊天基本不动）上，滑动聊天记录时每帧重算的面积很小。
+// - 立体感：顶部高光点、上沿亮边、下沿暗边、内侧厚度阴影、斜向边缘反光（::before）。
 const CSS = `
 #nep-float,#nep-bar,#nep-panel{
 --nep-glass:rgba(250,250,252,.96);--nep-sheen:rgba(255,255,255,.85);--nep-rim:rgba(255,255,255,1);--nep-rim-2:rgba(255,255,255,.35);
---nep-ink:#1d1d1f;--nep-ink-2:rgba(60,60,67,.66);--nep-raise:rgba(118,118,128,.12);--nep-raise-2:rgba(118,118,128,.2);
+--nep-glint:rgba(255,255,255,.8);--nep-depth:rgba(0,0,0,.07);--nep-blur:22px;
+--nep-ink:#1d1d1f;--nep-ink-2:rgba(60,60,67,.7);--nep-raise:rgba(118,118,128,.12);--nep-raise-2:rgba(118,118,128,.2);
 --nep-raise-3:rgba(118,118,128,.3);--nep-seg:#fff;--nep-paper:#fff;--nep-accent:#d33a31;--nep-on-accent:#fff;
 --nep-tint:#fbe9e7;--nep-tint-2:#f6d3cf;--nep-tint-ink:#8a1f19;--nep-ok:#1d8a3a;--nep-busy:#b35c00;
 --nep-shadow:0 12px 32px rgba(0,0,0,.16),0 2px 6px rgba(0,0,0,.08);--nep-spring:cubic-bezier(.32,1.28,.48,1);
@@ -377,24 +381,35 @@ font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Hiragi
 -webkit-font-smoothing:antialiased}
 :root[data-nep-glass=dark] #nep-float,:root[data-nep-glass=dark] #nep-bar,:root[data-nep-glass=dark] #nep-panel{
 --nep-glass:rgba(34,34,36,.96);--nep-sheen:rgba(255,255,255,.13);--nep-rim:rgba(255,255,255,.42);--nep-rim-2:rgba(255,255,255,.08);
---nep-ink:#fff;--nep-ink-2:rgba(235,235,245,.62);--nep-raise:rgba(118,118,128,.24);--nep-raise-2:rgba(118,118,128,.34);
+--nep-glint:rgba(255,255,255,.16);--nep-depth:rgba(0,0,0,.4);
+--nep-ink:#fff;--nep-ink-2:rgba(235,235,245,.66);--nep-raise:rgba(118,118,128,.24);--nep-raise-2:rgba(118,118,128,.34);
 --nep-raise-3:rgba(118,118,128,.46);--nep-seg:rgba(99,99,102,.95);--nep-paper:#2c2c2e;--nep-accent:#ff5c52;--nep-on-accent:#fff;
 --nep-tint:rgba(255,92,82,.14);--nep-tint-2:rgba(255,92,82,.24);--nep-tint-ink:#ffb4ae;--nep-ok:#30d158;--nep-busy:#ff9f0a;
 --nep-shadow:0 12px 32px rgba(0,0,0,.4),0 2px 6px rgba(0,0,0,.25)}
-/* 液态玻璃的顶部高光与边缘反光是用户指定的样式 */
-.nep-glass{color:var(--nep-ink);/* taste-skill-ignore: 玻璃高光 */background:linear-gradient(180deg,var(--nep-sheen),rgba(255,255,255,0) 60%),var(--nep-glass);
-box-shadow:inset 0 1px 0 var(--nep-rim),inset 0 -1px 0 var(--nep-rim-2),var(--nep-shadow)}
-.nep-glass::before{content:"";position:absolute;inset:0;z-index:0;padding:1px;border-radius:inherit;pointer-events:none;
-/* taste-skill-ignore: 玻璃边缘反光 */background:linear-gradient(135deg,var(--nep-rim),var(--nep-rim-2) 32%,rgba(255,255,255,0) 50%,var(--nep-rim-2) 70%,var(--nep-rim));
-/* taste-skill-ignore: 玻璃边缘反光 */-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
-/* taste-skill-ignore: 玻璃边缘反光 */mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
 #nep-panel{--nep-glass:#f7f7f9}
 :root[data-nep-glass=dark] #nep-panel{--nep-glass:#222224}
+/* 液态玻璃是用户指定的样式 */
+.nep-glass{color:var(--nep-ink);
+/* taste-skill-ignore: 玻璃高光 */background:radial-gradient(130% 100% at 18% -24%,var(--nep-glint),rgba(255,255,255,0) 52%),
+/* taste-skill-ignore: 玻璃高光 */linear-gradient(180deg,var(--nep-sheen),rgba(255,255,255,0) 60%),var(--nep-glass);
+box-shadow:inset 0 1px 1px var(--nep-rim),inset 0 -1px 1px var(--nep-rim-2),inset 0 14px 22px -18px var(--nep-rim),
+inset 0 -14px 24px -18px var(--nep-depth),var(--nep-shadow)}
+.nep-glass::before{content:"";position:absolute;inset:0;z-index:0;padding:1px;border-radius:inherit;pointer-events:none;
+/* taste-skill-ignore: 玻璃边缘反光 */background:linear-gradient(135deg,var(--nep-rim),var(--nep-rim-2) 30%,rgba(255,255,255,0) 50%,var(--nep-rim-2) 70%,var(--nep-rim));
+/* taste-skill-ignore: 玻璃边缘反光 */-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+/* taste-skill-ignore: 玻璃边缘反光 */mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+@supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+/* taste-skill-ignore: 用户指定的通透玻璃 */:root[data-nep-glassfx=clear] .nep-glass{-webkit-backdrop-filter:blur(var(--nep-blur)) saturate(1.9);backdrop-filter:blur(var(--nep-blur)) saturate(1.9)}
+:root[data-nep-glassfx=clear] #nep-float,:root[data-nep-glassfx=clear] #nep-bar{--nep-glass:rgba(255,255,255,.52);--nep-sheen:rgba(255,255,255,.6)}
+:root[data-nep-glassfx=clear] #nep-panel{--nep-glass:rgba(246,246,248,.74);--nep-blur:30px}
+:root[data-nep-glassfx=clear][data-nep-glass=dark] #nep-float,:root[data-nep-glassfx=clear][data-nep-glass=dark] #nep-bar{
+--nep-glass:rgba(40,40,44,.52);--nep-sheen:rgba(255,255,255,.1)}
+:root[data-nep-glassfx=clear][data-nep-glass=dark] #nep-panel{--nep-glass:rgba(30,30,32,.74)}}
 #nep-bar[hidden],#nep-float[hidden]{display:none!important}
 .nep-art{flex:none;position:relative;display:grid;place-items:center;overflow:hidden;background:var(--nep-raise-2);color:var(--nep-ink-2)}
-.nep-art img{display:none;width:100%;height:100%;object-fit:cover}
-.nep-art.nep-has-img img{display:block}
-.nep-art.nep-has-img i{display:none}
+/* 没有封面时不占位 */
+.nep-art:not(.nep-has-img){display:none!important}
+.nep-art img{display:block;width:100%;height:100%;object-fit:cover}
 [data-nep-tone=gen]{color:var(--nep-busy)!important}
 [data-nep-tone=done]{color:var(--nep-ok)!important}
 [data-nep-tone]::before{content:"";display:inline-block;width:6px;height:6px;margin:0 5px 1px 0;border-radius:50%;
@@ -402,23 +417,60 @@ background:currentColor;vertical-align:middle}
 [data-nep-tone=gen]::before{animation:nep-pulse 1.2s ease-in-out infinite}
 @keyframes nep-pulse{50%{opacity:.25}}
 
-#nep-float{position:fixed;z-index:2910;left:0;top:0;display:flex;align-items:center;gap:8px;max-width:min(230px,66vw);
-box-sizing:border-box;padding:4px 4px 4px 5px;border-radius:24px;font-size:13px;line-height:1.25;white-space:nowrap;
-will-change:transform;contain:layout style;transition:opacity .25s ease;
+#nep-float{position:fixed;z-index:2910;left:0;top:0;box-sizing:border-box;border-radius:24px;overflow:hidden;
+font-size:13px;line-height:1.25;white-space:nowrap;will-change:transform;contain:layout style;
+transition:opacity .25s ease,scale .35s var(--nep-spring);
 touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+#nep-float.nep-morph{transition:opacity .25s ease,scale .35s var(--nep-spring),transform .5s var(--nep-spring),
+width .5s var(--nep-spring),height .5s var(--nep-spring),border-radius .5s var(--nep-spring)}
+#nep-float[data-state=compact]:active:not(.nep-dragging){scale:.96}
+#nep-float[data-state=mid]{border-radius:32px;touch-action:manipulation}
 #nep-float.nep-away{opacity:0;pointer-events:none}
-#nep-float.nep-dragging{opacity:.8}
-#nep-float>*{position:relative;z-index:1}
-#nep-float .nep-info{display:flex;align-items:center;gap:8px;min-width:0;cursor:pointer;outline:0}
-#nep-float .nep-art{width:30px;height:30px;border-radius:50%;font-size:12px}
+#nep-float.nep-dragging{scale:1.04}
+#nep-float button{flex:none;border:0;border-radius:50%;padding:0;background:transparent;color:inherit;cursor:pointer;
+display:grid;place-items:center;-webkit-tap-highlight-color:transparent}
+#nep-float button:active{background:var(--nep-raise-2)}
+#nep-float :is(button,[role=button]):focus-visible{outline:2px solid var(--nep-accent);outline-offset:1px}
+.nep-compact{position:relative;z-index:1;display:flex;align-items:center;gap:8px;width:max-content;max-width:min(230px,66vw);
+box-sizing:border-box;padding:4px 4px 4px 5px;transition:opacity .2s ease}
+#nep-float[data-state=mid] .nep-compact{opacity:0;pointer-events:none}
+#nep-float .nep-info{display:flex;align-items:center;gap:8px;min-width:0;cursor:pointer;outline:0;border-radius:17px}
+#nep-float .nep-compact .nep-art{width:30px;height:30px;border-radius:50%;font-size:12px}
 #nep-float .nep-text{min-width:0;max-width:10.5em}
 #nep-float .nep-title,#nep-float .nep-sub{overflow:hidden;text-overflow:ellipsis}
 #nep-float .nep-title{font-weight:600}
 #nep-float .nep-sub{font-size:11.5px;color:var(--nep-ink-2)}
-#nep-float button{flex:none;width:34px;height:34px;border:0;border-radius:50%;padding:0;background:transparent;color:inherit;
-font-size:14px;cursor:pointer;display:grid;place-items:center;-webkit-tap-highlight-color:transparent}
-#nep-float button:active{background:var(--nep-raise-2)}
-#nep-float button:focus-visible,#nep-float .nep-info:focus-visible{outline:2px solid var(--nep-accent);outline-offset:1px;border-radius:17px}
+#nep-float .nep-play{width:34px;height:34px;font-size:14px}
+
+#nep-float .nep-mid{position:absolute;z-index:1;left:0;top:0;width:var(--nep-mid-w,340px);height:var(--nep-mid-h,164px);
+box-sizing:border-box;padding:16px 16px 8px;opacity:0;transform:scale(.92);transform-origin:50% 0;pointer-events:none;
+transition:opacity .18s ease,transform .45s var(--nep-spring);white-space:nowrap}
+#nep-float[data-state=mid] .nep-mid{opacity:1;transform:none;pointer-events:auto;transition-delay:.06s}
+.nep-mid-head{display:flex;align-items:center;gap:12px}
+.nep-mid-head .nep-art{width:52px;height:52px;border-radius:13px;font-size:19px;cursor:pointer}
+.nep-mid-text{flex:1;min-width:0;cursor:pointer;outline:0;border-radius:8px}
+.nep-mid-title,.nep-mid-sub{overflow:hidden;text-overflow:ellipsis}
+.nep-mid-title{font-size:16px;font-weight:600;line-height:1.3}
+.nep-mid-sub{margin-top:2px;font-size:13px;color:var(--nep-ink-2)}
+.nep-wave{display:flex;align-items:center;gap:2px;height:14px;align-self:flex-start;margin-top:6px}
+.nep-wave i{width:3px;height:14px;border-radius:2px;background:var(--nep-accent);transform:scaleY(.35);
+animation:nep-wave .9s ease-in-out infinite alternate;animation-play-state:paused}
+.nep-wave i:nth-child(2){animation-duration:.62s;animation-delay:-.2s}
+.nep-wave i:nth-child(3){animation-duration:.78s;animation-delay:-.45s}
+.nep-wave i:nth-child(4){animation-duration:.55s;animation-delay:-.1s}
+@keyframes nep-wave{to{transform:scaleY(1)}}
+#nep-float[data-playing][data-state=mid] .nep-wave i{animation-play-state:running}
+.nep-mid-progress{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:11px;font-weight:600;color:var(--nep-ink-2);
+font-variant-numeric:tabular-nums}
+.nep-mid-progress span{width:32px}
+.nep-mid-progress span:last-child{text-align:right}
+.nep-mid-track{flex:1;height:5px;border-radius:3px;background:var(--nep-raise-3);overflow:hidden}
+.nep-mid-track i{display:block;height:100%;background:var(--nep-ink);transform-origin:0 50%;transform:scaleX(0);transition:transform .9s linear}
+.nep-mid-controls{display:flex;align-items:center;justify-content:space-between;margin-top:4px}
+#nep-float .nep-mid-controls button{width:46px;height:46px;font-size:20px}
+#nep-float .nep-mid-controls .nep-mid-play{width:54px;height:54px;font-size:26px}
+#nep-float .nep-mid-controls .nep-mid-side{font-size:16px;color:var(--nep-ink-2)}
+#nep-float[data-silent] .nep-mid-silent{color:var(--nep-accent)}
 
 #nep-bar{position:relative;display:flex;align-items:center;gap:6px;width:100%;box-sizing:border-box;margin:0 0 4px;
 padding:3px 4px 3px 5px;border-radius:22px;font-size:14px;white-space:nowrap}
@@ -432,13 +484,23 @@ padding:3px 4px 3px 5px;border-radius:22px;font-size:14px;white-space:nowrap}
 font-size:15px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 #nep-bar button:active{background:var(--nep-raise-2)}
 #nep-bar .nep-resume{width:auto;padding:0 14px;border-radius:18px;background:var(--nep-raise-2);font:600 13px/1 inherit}
-@media (prefers-reduced-motion:reduce){[data-nep-tone=gen]::before{animation:none}}
+@media (prefers-reduced-motion:reduce){
+[data-nep-tone=gen]::before,.nep-wave i{animation:none!important}
+#nep-float,#nep-float.nep-morph,.nep-compact,#nep-float .nep-mid{transition-duration:.01s!important}}
 `;
 
 // 默认在顶栏下方居中；y 为 null 表示「贴着顶栏」，按顶栏实际高度算
 const FLOAT_MARGIN = 6;
 const FLOAT_DEFAULT_POS = { x: 0.5, y: null };
-const ART = '<span class="nep-art"><img alt=""><i class="fa-solid fa-music"></i></span>';
+const ART = '<span class="nep-art"><img alt=""></span>';
+const WAVE = '<span class="nep-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
+// 中间态（播放卡片）的大小：固定，内容不在形变动画里重排
+const midSize = () => ({ w: Math.round(Math.min(340, window.innerWidth - FLOAT_MARGIN * 2)), h: 164 });
+
+const fmtTime = (sec) => {
+    if (!Number.isFinite(sec) || sec < 0) return '0:00';
+    return `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+};
 
 // 播放类按钮：播放逻辑已加载就同步调用（保持在用户手势里）；
 // 没加载时先同步解锁音频，再去加载
@@ -471,12 +533,15 @@ function themeInkLuminance() {
     return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
 }
 
-/** 按设置或主题决定浅色 / 深色玻璃，写在 <html data-nep-glass>。 */
+/** 按设置或主题决定浅色 / 深色玻璃、通透 / 不透明，写在 <html data-nep-glass data-nep-glassfx>。 */
 export function applyGlass() {
+    const root = document.documentElement;
     const mode = settings.glass === 'light' || settings.glass === 'dark'
         ? settings.glass
         : (themeInkLuminance() < 0.5 ? 'light' : 'dark');
-    if (document.documentElement.dataset.nepGlass !== mode) document.documentElement.dataset.nepGlass = mode;
+    if (root.dataset.nepGlass !== mode) root.dataset.nepGlass = mode;
+    const fx = settings.glassFx === 'solid' ? 'solid' : 'clear';
+    if (root.dataset.nepGlassfx !== fx) root.dataset.nepGlassfx = fx;
 }
 
 function watchTheme() {
@@ -519,24 +584,60 @@ function createBar() {
     return el;
 }
 
+/**
+ * 悬浮胶囊有两层：收起时的胶囊（.nep-compact），轻点后原地展开的播放卡片（.nep-mid）。
+ * 卡片上点列表键、封面或歌名才打开完整面板。
+ */
 function createFloat() {
     const el = document.createElement('div');
     el.id = 'nep-float';
     el.className = 'nep-glass';
     el.hidden = true;
+    el.dataset.state = 'compact';
     el.innerHTML = `
-        <div class="nep-info" role="button" tabindex="0" aria-label="打开播放器（按住可拖动）">
-            ${ART}<div class="nep-text"><div class="nep-title"></div><div class="nep-sub"></div></div>
+        <div class="nep-compact">
+            <div class="nep-info" role="button" tabindex="0" aria-label="展开播放卡片（按住可拖动）">
+                ${ART}<div class="nep-text"><div class="nep-title"></div><div class="nep-sub"></div></div>
+            </div>
+            <button type="button" class="nep-play" aria-label="播放/暂停"><i class="nep-glyph fa-solid fa-play"></i></button>
         </div>
-        <button type="button" class="nep-play" aria-label="播放/暂停"><i class="nep-glyph fa-solid fa-play"></i></button>`;
+        <div class="nep-mid" aria-hidden="true">
+            <div class="nep-mid-head">${ART}
+                <div class="nep-mid-text" role="button" tabindex="-1" aria-label="打开完整播放器">
+                    <div class="nep-mid-title"></div><div class="nep-mid-sub"></div></div>
+                ${WAVE}
+            </div>
+            <div class="nep-mid-progress"><span class="nep-mid-cur">0:00</span>
+                <div class="nep-mid-track"><i></i></div><span class="nep-mid-dur">0:00</span></div>
+            <div class="nep-mid-controls">
+                <button type="button" class="nep-mid-side nep-mid-full" tabindex="-1" aria-label="打开完整播放器"><i class="fa-solid fa-list-ul"></i></button>
+                <button type="button" class="nep-mid-prev" tabindex="-1" aria-label="上一首"><i class="fa-solid fa-backward"></i></button>
+                <button type="button" class="nep-mid-play" tabindex="-1" aria-label="播放/暂停"><i class="nep-glyph fa-solid fa-play"></i></button>
+                <button type="button" class="nep-mid-next" tabindex="-1" aria-label="下一首"><i class="fa-solid fa-forward"></i></button>
+                <button type="button" class="nep-mid-side nep-mid-silent" tabindex="-1" aria-label="静音播放"><i class="fa-solid fa-volume-xmark"></i></button>
+            </div>
+        </div>`;
     document.body.appendChild(el);
-    el.querySelector('.nep-play').addEventListener('click', withEngine(e => e.toggle()));
-    const info = el.querySelector('.nep-info');
-    info.addEventListener('click', () => openPanel());
-    info.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
-        e.preventDefault();
-        openPanel();
+    const on = (sel, fn) => el.querySelector(sel).addEventListener('click', fn);
+    on('.nep-play', withEngine(e => e.toggle()));
+    on('.nep-info', (e) => expandFloat(e.detail === 0));
+    on('.nep-mid-play', withEngine(e => e.toggle()));
+    on('.nep-mid-prev', withEngine(e => e.prev()));
+    on('.nep-mid-next', withEngine(e => e.next()));
+    on('.nep-mid-silent', withEngine((e) => {
+        if (e.isSilentMode()) e.stopSilent();
+        else e.startSilent();
+        miniBar.render();
+    }));
+    for (const sel of ['.nep-mid-full', '.nep-mid-text', '.nep-mid-head .nep-art']) on(sel, () => openPanel());
+    el.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            collapseFloat();
+            el.querySelector('.nep-info').focus({ preventScroll: true });
+        } else if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[role=button]')) {
+            e.preventDefault();
+            e.target.click();
+        }
     });
     bindDrag(el);
     // iOS 滑动时地址栏收起也会触发 resize，合并到下一帧只算一次
@@ -545,13 +646,15 @@ function createFloat() {
         if (resizeFrame) return;
         resizeFrame = requestAnimationFrame(() => {
             resizeFrame = 0;
-            placeFloat(el);
+            if (el.dataset.state === 'mid') layoutMid(el);
+            else placeFloat(el);
         });
     });
     return el;
 }
 
 let floatPos = null;
+let floatRect = null; // 收起时的位置和大小，展开时以它为锚点
 
 function savedFloatPos() {
     floatPos ??= store.get(KEYS.floatPos) || FLOAT_DEFAULT_POS;
@@ -560,14 +663,21 @@ function savedFloatPos() {
 
 const clamp01 = (v) => Math.min(1, Math.max(0, Number(v) || 0));
 
+/** 收起状态的胶囊大小：按内容算，不受展开时写在元素上的宽高影响。 */
+function compactSize(el) {
+    const c = el.querySelector('.nep-compact');
+    return { w: c.offsetWidth, h: c.offsetHeight };
+}
+
 /**
  * 位置按「可移动范围里的比例」保存，转屏或窗口变化后还在同一侧。
  * 用 transform 移动：不触发页面重排，胶囊自己一个图层。
  */
 function placeFloat(el, pos = savedFloatPos()) {
-    if (el.hidden) return;
-    const maxX = Math.max(0, window.innerWidth - el.offsetWidth - FLOAT_MARGIN * 2);
-    const maxY = Math.max(0, window.innerHeight - el.offsetHeight - FLOAT_MARGIN * 2);
+    if (el.hidden || el.dataset.state === 'mid') return;
+    const { w, h } = compactSize(el);
+    const maxX = Math.max(0, window.innerWidth - w - FLOAT_MARGIN * 2);
+    const maxY = Math.max(0, window.innerHeight - h - FLOAT_MARGIN * 2);
     const x = Math.round(FLOAT_MARGIN + clamp01(pos.x) * maxX);
     let y;
     if (pos.y == null) {
@@ -577,12 +687,14 @@ function placeFloat(el, pos = savedFloatPos()) {
     } else {
         y = Math.round(FLOAT_MARGIN + clamp01(pos.y) * maxY);
     }
+    floatRect = { x, y, w, h };
     el.style.transform = `translate3d(${x}px,${y}px,0)`;
 }
 
 function moveFloat(el, left, top) {
-    const maxX = Math.max(0, window.innerWidth - el.offsetWidth - FLOAT_MARGIN * 2);
-    const maxY = Math.max(0, window.innerHeight - el.offsetHeight - FLOAT_MARGIN * 2);
+    const { w, h } = compactSize(el);
+    const maxX = Math.max(0, window.innerWidth - w - FLOAT_MARGIN * 2);
+    const maxY = Math.max(0, window.innerHeight - h - FLOAT_MARGIN * 2);
     const x = maxX ? clamp01((left - FLOAT_MARGIN) / maxX) : 0;
     const y = maxY ? clamp01((top - FLOAT_MARGIN) / maxY) : 0;
     placeFloat(el, { x, y });
@@ -595,10 +707,90 @@ export function resetFloatPosition() {
     if (miniBar.float) placeFloat(miniBar.float);
 }
 
+/** 播放卡片的位置：以胶囊中心为准横向展开，上半屏往下长、下半屏往上长，不出屏幕。 */
+function layoutMid(el) {
+    const c = floatRect || { x: FLOAT_MARGIN, y: FLOAT_MARGIN, ...compactSize(el) };
+    const { w, h } = midSize();
+    const x = Math.round(Math.max(FLOAT_MARGIN, Math.min(window.innerWidth - w - FLOAT_MARGIN, c.x + c.w / 2 - w / 2)));
+    const down = c.y + c.h / 2 < window.innerHeight / 2;
+    const y = Math.round(Math.max(FLOAT_MARGIN, Math.min(window.innerHeight - h - FLOAT_MARGIN, down ? c.y : c.y + c.h - h)));
+    el.style.setProperty('--nep-mid-w', `${w}px`);
+    el.style.setProperty('--nep-mid-h', `${h}px`);
+    el.style.width = `${w}px`;
+    el.style.height = `${h}px`;
+    el.style.transform = `translate3d(${x}px,${y}px,0)`;
+}
+
+let midTimer = 0;
+let morphEnd = null;
+
+function onOutsidePointer(e) {
+    if (miniBar.float && !miniBar.float.contains(e.target)) collapseFloat();
+}
+
+function setMidFocusable(el, on) {
+    el.querySelector('.nep-mid').setAttribute('aria-hidden', on ? 'false' : 'true');
+    for (const b of el.querySelectorAll('.nep-mid [tabindex]')) b.tabIndex = on ? 0 : -1;
+}
+
+/** 胶囊 → 播放卡片：先把当前大小写死，下一帧再改成卡片大小，宽高和位置一起做弹簧形变。 */
+export function expandFloat(focus = false) {
+    const el = miniBar.float;
+    if (!el || el.hidden || el.dataset.state === 'mid') return;
+    clearTimeout(morphEnd);
+    const { w, h } = compactSize(el);
+    el.style.width = `${w}px`;
+    el.style.height = `${h}px`;
+    void el.offsetWidth;
+    el.classList.add('nep-morph');
+    el.dataset.state = 'mid';
+    layoutMid(el);
+    setMidFocusable(el, true);
+    miniBar.render();
+    renderMidProgress();
+    clearInterval(midTimer);
+    midTimer = setInterval(renderMidProgress, 1000);
+    document.addEventListener('pointerdown', onOutsidePointer, true);
+    if (focus) el.querySelector('.nep-mid-play').focus({ preventScroll: true });
+}
+
+/** 播放卡片 → 胶囊：形变回胶囊的大小和位置，动画结束后把宽高交还给内容。 */
+export function collapseFloat() {
+    const el = miniBar.float;
+    if (!el || el.dataset.state !== 'mid') return;
+    clearInterval(midTimer);
+    document.removeEventListener('pointerdown', onOutsidePointer, true);
+    setMidFocusable(el, false);
+    el.dataset.state = 'compact';
+    const { w, h } = compactSize(el);
+    el.style.width = `${w}px`;
+    el.style.height = `${h}px`;
+    placeFloat(el);
+    clearTimeout(morphEnd);
+    morphEnd = setTimeout(() => {
+        if (el.dataset.state !== 'compact') return;
+        el.classList.remove('nep-morph');
+        el.style.width = '';
+        el.style.height = '';
+    }, 520);
+}
+
+function renderMidProgress() {
+    const el = miniBar.float;
+    if (!el || el.dataset.state !== 'mid') return;
+    const s = engineModule?.getState();
+    const silent = !!s?.silent;
+    const dur = s && !silent ? (s.duration || (s.track?.dt || 0) / 1000) : 0;
+    const cur = s && !silent ? s.currentTime : 0;
+    el.querySelector('.nep-mid-cur').textContent = fmtTime(cur);
+    el.querySelector('.nep-mid-dur').textContent = dur ? fmtTime(dur) : '–:––';
+    el.querySelector('.nep-mid-track i').style.transform = `scaleX(${dur ? Math.min(1, cur / dur) : 0})`;
+}
+
 /**
  * 按住移动超过几像素算拖动；拖动结束后吞掉随之而来的那次点击。
  * 移动和抬起在 window 上监听：手指移出胶囊后它本身收不到事件。
- * 不用 setPointerCapture，否则点击会落到外层而不是播放键上。
+ * 不用 setPointerCapture，否则点击会落到外层而不是播放键上。展开成卡片时不能拖。
  */
 function bindDrag(el) {
     let start = null;
@@ -632,8 +824,8 @@ function bindDrag(el) {
     };
     el.addEventListener('pointerdown', (e) => {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
-        const r = el.getBoundingClientRect();
-        start = { id: e.pointerId, x: e.clientX, y: e.clientY, left: r.left, top: r.top };
+        if (el.dataset.state === 'mid' || el.classList.contains('nep-morph')) return;
+        start = { id: e.pointerId, x: e.clientX, y: e.clientY, left: floatRect?.x ?? 0, top: floatRect?.y ?? 0 };
         dragged = false;
         pos = null;
         window.addEventListener('pointermove', onMove, { passive: false });
@@ -649,14 +841,15 @@ function bindDrag(el) {
 }
 
 function setArt(root, pic) {
-    const art = root.querySelector('.nep-art');
-    const img = art.querySelector('img');
-    const src = pic ? `${pic}?param=80y80` : '';
-    if (img.dataset.src === src) return;
-    img.dataset.src = src;
-    if (src) img.src = src;
-    else img.removeAttribute('src');
-    art.classList.toggle('nep-has-img', !!src);
+    const src = pic ? `${pic}?param=120y120` : '';
+    for (const art of root.querySelectorAll('.nep-art')) {
+        const img = art.querySelector('img');
+        if (img.dataset.src === src) continue;
+        img.dataset.src = src;
+        if (src) img.src = src;
+        else img.removeAttribute('src');
+        art.classList.toggle('nep-has-img', !!src);
+    }
 }
 
 function toneOf(label) {
@@ -664,6 +857,11 @@ function toneOf(label) {
     if (gen.state === 'generating') return 'gen';
     return label.includes('已完成') ? 'done' : '';
 }
+
+const setTone = (node, tone) => {
+    if (tone) node.dataset.nepTone = tone;
+    else delete node.dataset.nepTone;
+};
 
 /**
  * 迷你播放条和悬浮胶囊共用一份状态（engine.js 只调 set/show/hide）。
@@ -700,6 +898,7 @@ export const miniBar = {
 
     setAway(away) {
         this.away = away;
+        if (away) collapseFloat();
         this.float?.classList.toggle('nep-away', away);
     },
 
@@ -711,6 +910,7 @@ export const miniBar = {
         if (showFloat && !this.float) this.float = createFloat();
         if (this.bar) this.bar.hidden = !showBar;
         if (this.float) {
+            if (!showFloat) collapseFloat();
             this.float.hidden = !showFloat;
             this.float.classList.toggle('nep-away', this.away);
         }
@@ -728,13 +928,13 @@ export const miniBar = {
     render() {
         const label = gen.label;
         const tone = toneOf(label);
+        const title = this.title || '网易云音乐';
         let floatResized = false;
         for (const el of [this.bar, this.float]) {
             if (!el || el.hidden) continue;
             const isFloat = el === this.float;
-            const title = this.title || '网易云音乐';
             const note = isFloat && this.needTap ? '轻点 ▶ 继续播放' : this.note;
-            const subText = label || note || this.artist || '点歌名打开播放器';
+            const subText = label || note || this.artist || (isFloat ? '轻点展开' : '点歌名打开播放器');
             const titleEl = el.querySelector('.nep-title');
             const sub = el.querySelector('.nep-sub');
             // 文字没变就不碰 DOM
@@ -743,19 +943,27 @@ export const miniBar = {
                 sub.textContent = subText;
                 if (isFloat) floatResized = true;
             }
-            if (tone) sub.dataset.nepTone = tone;
-            else delete sub.dataset.nepTone;
+            setTone(sub, tone);
             setArt(el, this.pic);
-            const glyph = el.querySelector('.nep-play .nep-glyph');
-            glyph.classList.toggle('fa-play', !this.playing);
-            glyph.classList.toggle('fa-pause', !!this.playing);
+            for (const glyph of el.querySelectorAll('.nep-glyph')) {
+                glyph.classList.toggle('fa-play', !this.playing);
+                glyph.classList.toggle('fa-pause', !!this.playing);
+            }
             const resume = el.querySelector('.nep-resume');
             if (resume) resume.hidden = !this.needTap;
         }
-        // 文字变了宽度会变，重新贴边，免得超出屏幕；刚显示出来时也要摆一次
         const float = this.float;
-        if (float && !float.hidden && (floatResized || !float.style.transform) && !float.classList.contains('nep-dragging')) {
-            placeFloat(float);
+        if (float && !float.hidden) {
+            float.toggleAttribute('data-playing', !!this.playing);
+            float.toggleAttribute('data-silent', !!engineModule?.isSilentMode());
+            const midTitle = float.querySelector('.nep-mid-title');
+            if (midTitle.textContent !== title) midTitle.textContent = title;
+            const midSub = float.querySelector('.nep-mid-sub');
+            const midText = label || this.note || this.artist || '去完整播放器里挑一个歌单';
+            if (midSub.textContent !== midText) midSub.textContent = midText;
+            setTone(midSub, tone);
+            // 文字变了宽度会变，重新贴边，免得超出屏幕；刚显示出来时也要摆一次
+            if ((floatResized || !float.style.transform) && !float.classList.contains('nep-dragging')) placeFloat(float);
         }
     },
 };
@@ -764,6 +972,7 @@ export const miniBar = {
 
 export const ENTRY_OPTIONS = [['float', '悬浮胶囊（可拖动）'], ['bar', '输入框上方的迷你播放条'], ['off', '关闭']];
 export const GLASS_OPTIONS = [['auto', '跟随主题'], ['light', '浅色'], ['dark', '深色']];
+export const GLASSFX_OPTIONS = [['clear', '通透（毛玻璃）'], ['solid', '不透明']];
 
 function addSettingsDrawer() {
     const host = document.getElementById('extensions_settings2') || document.getElementById('extensions_settings');
@@ -784,6 +993,7 @@ function addSettingsDrawer() {
             </div>
             <label for="nep-settings-entry">常驻入口</label>${select('nep-settings-entry', ENTRY_OPTIONS)}
             <label for="nep-settings-glass">玻璃颜色</label>${select('nep-settings-glass', GLASS_OPTIONS)}
+            <label for="nep-settings-glassfx">玻璃质感</label>${select('nep-settings-glassfx', GLASSFX_OPTIONS)}
             <small>搜歌、歌单、扫码登录和其他设置在播放器右上角的「账号与设置」里。</small>
         </div>`;
     host.appendChild(el);
@@ -793,6 +1003,9 @@ function addSettingsDrawer() {
     const glass = el.querySelector('#nep-settings-glass');
     glass.value = settings.glass;
     glass.addEventListener('change', () => setGlass(glass.value));
+    const fx = el.querySelector('#nep-settings-glassfx');
+    fx.value = settings.glassFx;
+    fx.addEventListener('change', () => setGlassFx(fx.value));
     el.querySelector('[data-act=open]').addEventListener('click', () => openPanel());
     el.querySelector('[data-act=reset]').addEventListener('click', () => resetFloatPosition());
 }
@@ -810,6 +1023,14 @@ export function setGlass(value) {
     saveSettings();
     applyGlass();
     const select = document.getElementById('nep-settings-glass');
+    if (select) select.value = value;
+}
+
+export function setGlassFx(value) {
+    settings.glassFx = value;
+    saveSettings();
+    applyGlass();
+    const select = document.getElementById('nep-settings-glassfx');
     if (select) select.value = value;
 }
 

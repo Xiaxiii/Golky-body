@@ -215,10 +215,30 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   await page.tap('#nep-float .nep-play');
   await sleep(500);
   check(await page.evaluate(() => !document.getElementById('nep-audio').paused), '触摸点播放键继续');
+  // 轻点胶囊：原地展开成播放卡片（中间态），不打开完整面板
   await page.tap('#nep-float .nep-info');
+  await page.waitForSelector('#nep-float[data-state=mid]');
+  await sleep(600);
+  const rm = await rectOf();
+  check(!(await panelOpen()) && rm.w > r2.w && rm.h > r2.h && rm.x >= 0 && rm.x + rm.w <= 390 && rm.y >= 0 && rm.y + rm.h <= 844, `轻点胶囊原地展开成播放卡片 ${JSON.stringify(rm)}`);
+  await page.screenshot({ path: OUT + '/8-float-mid.png' });
+  await page.tap('#nep-float .nep-mid-play');
+  await sleep(300);
+  check(await page.evaluate(() => document.getElementById('nep-audio').paused), '播放卡片的播放键暂停');
+  await page.tap('#nep-float .nep-mid-play');
+  await sleep(500);
+  check(await page.evaluate(() => !document.getElementById('nep-audio').paused), '播放卡片的播放键继续');
+  await page.mouse.click(10, 800);
+  await sleep(700);
+  const rc = await rectOf();
+  check(await page.$eval('#nep-float', el => el.dataset.state) === 'compact' && Math.abs(rc.w - r2.w) < 2 && Math.abs(rc.x - r2.x) < 2 && Math.abs(rc.y - r2.y) < 2, `点卡片外面收回胶囊，回到原位 ${JSON.stringify(rc)}`);
+  // 卡片上的列表键打开完整面板
+  await page.tap('#nep-float .nep-info');
+  await page.waitForSelector('#nep-float[data-state=mid]');
+  await page.tap('#nep-float .nep-mid-full');
   await page.waitForSelector('#nep-panel:not([hidden])');
-  check(await page.$eval('#nep-float', el => el.classList.contains('nep-away')), '点悬浮胶囊打开面板，面板开着时悬浮胶囊让位');
-  await page.screenshot({ path: OUT + '/8-float-panel.png' });
+  check(await page.$eval('#nep-float', el => el.classList.contains('nep-away') && el.dataset.state === 'compact'), '播放卡片点列表键打开完整面板，面板开着时胶囊让位');
+  await page.screenshot({ path: OUT + '/8b-float-panel.png' });
 
   // ---------- 歌单刷新 ----------
   // 打开面板时已经后台检查过一次歌单（已登录），回到首页直接有数据
@@ -263,6 +283,8 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   check(!(await panelOpen()) && !(await page.$eval('#nep-float', el => el.classList.contains('nep-away'))), '收起面板后悬浮胶囊回来');
   await sleep(10500);
   await page.click('#nep-float .nep-info');
+  await page.waitForSelector('#nep-float[data-state=mid]');
+  await page.click('#nep-float .nep-mid-full');
   await page.waitForFunction(() => document.querySelectorAll('#nep-panel .nep-row').length === 4 && document.querySelector('#nep-panel .nep-pl-meta')?.textContent.startsWith('4 首'), null, { timeout: 5000 });
   check(true, '打开面板时自动检查到歌单变化并重新加载（5 → 4 首）');
 

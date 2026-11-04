@@ -2,7 +2,7 @@
 // 点开播放器时才加载。页面是一个栈：首页在底，其余页面推入，左上角返回。
 import {
     api, store, settings, saveSettings, getLog, clearLog, gen, miniBar, resetFloatPosition,
-    setEntry, setGlass, ENTRY_OPTIONS, GLASS_OPTIONS,
+    setEntry, setGlass, setGlassFx, ENTRY_OPTIONS, GLASS_OPTIONS, GLASSFX_OPTIONS,
 } from './index.js';
 import * as engine from './engine.js';
 
@@ -1042,8 +1042,9 @@ function renderSettings() {
         <div class="nep-group">
             <label class="nep-set"><span>常驻入口</span>${options('entry', ENTRY_OPTIONS)}</label>
             <label class="nep-set"><span>玻璃颜色</span>${options('glass', GLASS_OPTIONS)}</label>
+            <label class="nep-set"><span>玻璃质感</span>${options('glassFx', GLASSFX_OPTIONS)}</label>
             ${settings.entry === 'float' ? '<button type="button" class="nep-btn" data-act="float-reset">悬浮胶囊回到顶部居中</button>' : ''}
-            <div class="nep-hint">选「关闭」后不显示任何常驻入口，从魔法棒菜单或扩展设置打开播放器。</div>
+            <div class="nep-hint">「通透」会模糊背后的聊天内容；手机上滑动聊天记录觉得卡时，改成「不透明」。选「关闭」后不显示任何常驻入口，从魔法棒菜单或扩展设置打开播放器。</div>
         </div>
 
         <div class="nep-group-title">播放</div>
@@ -1371,6 +1372,7 @@ function onChange(e) {
         return;
     }
     if (key === 'glass') return void setGlass(value);
+    if (key === 'glassFx') return void setGlassFx(value);
     settings[key] = type === 'checkbox' ? checked : (dataset.kind === 'text' ? value : Number(value));
     saveSettings();
 }
