@@ -1,55 +1,79 @@
 // 展开面板：搜索、我的歌单、播放队列、账号与设置。点开播放器时才加载。
-import { api, settings, saveSettings, getLog, clearLog, gen, miniBar, resetFloatPosition } from './index.js';
+import { api, settings, saveSettings, getLog, clearLog, gen, miniBar, resetFloatPosition, setEntry, setGlass, ENTRY_OPTIONS, GLASS_OPTIONS } from './index.js';
 import * as engine from './engine.js';
 
 const CSS = `
-#nep-panel{position:fixed;z-index:2900;left:max(6px,env(safe-area-inset-left));right:max(6px,env(safe-area-inset-right));
-top:calc(var(--topBarBlockSize,50px) + env(safe-area-inset-top) + 4px);height:min(68dvh,620px);max-width:640px;margin:0 auto;
-display:flex;flex-direction:column;box-sizing:border-box;border:1px solid var(--SmartThemeBorderColor);border-radius:12px;
-background:var(--SmartThemeBlurTintColor);background:rgb(from var(--SmartThemeBlurTintColor) r g b);
-color:var(--SmartThemeBodyColor);box-shadow:0 6px 24px rgba(0,0,0,.35);font-size:15px;white-space:normal;overflow:hidden;
-contain:layout style}
+#nep-panel{position:fixed;z-index:2900;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
+top:calc(var(--topBarBlockSize,50px) + env(safe-area-inset-top) + 6px);height:min(70dvh,640px);max-width:560px;margin:0 auto;
+display:flex;flex-direction:column;box-sizing:border-box;border-radius:34px;font-size:15px;line-height:1.35;white-space:normal;overflow:hidden;contain:layout style;
+transform-origin:50% 0;animation:nep-sheet .5s var(--nep-spring)}
+@keyframes nep-sheet{from{opacity:0;transform:scale(.6,.2)}40%{opacity:1}}
 #nep-panel[hidden]{display:none}
 #nep-panel *{box-sizing:border-box}
 #nep-panel button:not(.fa-solid){font:inherit}
-#nep-panel button{color:inherit;background:transparent;border:1px solid var(--SmartThemeBorderColor);border-radius:8px;
-padding:6px 10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-#nep-panel button:active{background:var(--SmartThemeBorderColor)}
-#nep-panel button.nep-icon{border:0;width:40px;height:40px;padding:0;font-size:1.1em}
-#nep-panel input[type=text],#nep-panel input[type=search],#nep-panel select{font:inherit;color:inherit;background:transparent;
-border:1px solid var(--SmartThemeBorderColor);border-radius:8px;padding:6px 8px;min-width:0}
-.nep-now{display:flex;align-items:center;gap:10px;padding:10px 10px 4px}
-.nep-cover{width:48px;height:48px;border-radius:8px;flex:none;object-fit:cover;background:var(--SmartThemeBorderColor)}
-.nep-now-text{flex:1;min-width:0;line-height:1.3}
+#nep-panel button{color:inherit;background:var(--nep-raise);border:0;border-radius:18px;padding:7px 14px;font-weight:600;
+cursor:pointer;-webkit-tap-highlight-color:transparent}
+#nep-panel button:active{background:var(--nep-raise-3)}
+#nep-panel button:disabled{opacity:.5}
+#nep-panel button:focus-visible,#nep-panel input:focus-visible,#nep-panel select:focus-visible{outline:2px solid var(--nep-accent);outline-offset:1px}
+#nep-panel button.nep-icon{background:transparent;width:44px;height:44px;padding:0;border-radius:50%;font-size:19px}
+#nep-panel button.nep-icon:active{background:var(--nep-raise-2)}
+#nep-panel input[type=text],#nep-panel input[type=search],#nep-panel select{font:inherit;color:inherit;background:var(--nep-raise);
+border:0;border-radius:12px;padding:9px 12px;min-width:0;outline:0}
+#nep-panel input::placeholder{color:var(--nep-ink-2)}
+.nep-now{display:flex;align-items:center;gap:12px;padding:20px 14px 6px 20px}
+.nep-cover{width:56px;height:56px;border-radius:14px;flex:none;object-fit:cover;background:var(--nep-raise-2)}
+.nep-now-text{flex:1;min-width:0}
 .nep-now-title,.nep-now-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.nep-now-sub{opacity:.7;font-size:.88em}
-.nep-now-sub.nep-gen{opacity:1;color:var(--SmartThemeQuoteColor)}
-.nep-progress{display:flex;align-items:center;gap:8px;padding:0 12px;font-size:.78em;opacity:.8;font-variant-numeric:tabular-nums}
-.nep-progress input{flex:1;accent-color:var(--SmartThemeQuoteColor)}
-.nep-controls{display:flex;justify-content:center;align-items:center;gap:6px;padding:2px 8px 6px}
-.nep-controls .nep-silent.nep-on{color:var(--SmartThemeQuoteColor)}
-.nep-tabs{display:flex;border-top:1px solid var(--SmartThemeBorderColor);border-bottom:1px solid var(--SmartThemeBorderColor)}
-.nep-tabs button{flex:1;border:0!important;border-radius:0!important;padding:9px 0!important;opacity:.65}
-.nep-tabs button.nep-active{opacity:1;box-shadow:inset 0 -2px 0 var(--SmartThemeQuoteColor)}
-.nep-body{flex:1;min-height:0;contain:content;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:8px 10px calc(10px + env(safe-area-inset-bottom))}
-.nep-row{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid color-mix(in srgb,var(--SmartThemeBorderColor) 60%,transparent);cursor:pointer}
-.nep-row:last-child{border-bottom:0}
-.nep-row.nep-current{color:var(--SmartThemeQuoteColor)}
+.nep-now-title{font-size:17px;font-weight:600}
+.nep-now-sub{margin-top:2px;color:var(--nep-ink-2);font-size:14px}
+.nep-now-sub.nep-gen{color:var(--nep-busy)}
+.nep-now-sub.nep-done{color:var(--nep-ok)}
+#nep-panel button.nep-close{align-self:flex-start;width:32px;height:32px;margin-top:-4px;font-size:14px;background:var(--nep-raise)}
+.nep-progress{display:flex;align-items:center;gap:10px;padding:8px 20px 0;font-size:11px;font-weight:600;color:var(--nep-ink-2);
+font-variant-numeric:tabular-nums}
+.nep-progress span{width:34px}
+.nep-progress span:last-child{text-align:right}
+.nep-progress input{flex:1;height:5px;margin:0;-webkit-appearance:none;appearance:none;border-radius:3px;
+background:linear-gradient(var(--nep-ink),var(--nep-ink)) 0/var(--nep-fill,0%) 100% no-repeat,var(--nep-raise-3)}
+.nep-progress input::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--nep-ink);border:0}
+.nep-progress input::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--nep-ink);border:0}
+.nep-controls{display:flex;justify-content:space-between;align-items:center;padding:4px 14px 10px}
+#nep-panel .nep-controls .nep-toggle{width:58px;height:58px;font-size:30px}
+#nep-panel .nep-controls .nep-mode,#nep-panel .nep-controls .nep-goqueue,#nep-panel .nep-controls .nep-silent{font-size:16px;color:var(--nep-ink-2)}
+#nep-panel .nep-controls .nep-on{color:var(--nep-accent)}
+.nep-tabs{display:flex;gap:2px;margin:0 14px;padding:2px;border-radius:11px;background:var(--nep-raise)}
+#nep-panel .nep-tabs button{flex:1;padding:6px 0;border-radius:9px;background:transparent;color:var(--nep-ink-2);font-size:13px}
+#nep-panel .nep-tabs button.nep-active{background:var(--nep-seg);color:var(--nep-ink);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.nep-body{flex:1;min-height:0;contain:content;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+padding:12px 12px calc(16px + env(safe-area-inset-bottom))}
+.nep-row{display:flex;align-items:center;gap:12px;min-height:56px;padding:6px 8px;border-radius:14px;cursor:pointer}
+.nep-row:active{background:var(--nep-raise)}
+.nep-row.nep-current .nep-row-title{color:var(--nep-accent)}
 .nep-row-main{flex:1;min-width:0}
 .nep-row-title,.nep-row-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.nep-row-sub{opacity:.65;font-size:.82em}
-.nep-row img{width:40px;height:40px;border-radius:6px;object-fit:cover;flex:none;background:var(--SmartThemeBorderColor)}
-.nep-badge{display:inline-block;font-size:.72em;padding:0 4px;margin-left:4px;border:1px solid currentColor;border-radius:4px;opacity:.75;vertical-align:1px}
-.nep-bar{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+.nep-row-title{font-weight:500}
+.nep-row-sub{margin-top:1px;color:var(--nep-ink-2);font-size:13px}
+.nep-row img{width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none;background:var(--nep-raise-2)}
+.nep-row .nep-icon{color:var(--nep-ink-2)}
+.nep-badge{display:inline-block;margin-left:6px;padding:1px 5px;border-radius:5px;font-size:10px;font-weight:700;vertical-align:2px;
+color:var(--nep-accent);background:rgba(255,77,94,.16)}
+.nep-bar{display:flex;gap:8px;align-items:center;margin-bottom:10px}
 .nep-bar input{flex:1}
-.nep-hint{opacity:.7;font-size:.88em;line-height:1.5;margin:6px 0}
-.nep-error{color:#e66;font-size:.9em;margin:6px 0}
-.nep-qr{display:block;width:200px;height:200px;margin:8px auto;background:#fff;border-radius:8px;padding:6px}
-.nep-section{margin:4px 0 14px}
-.nep-section h4{margin:0 0 6px;font-size:.95em}
-.nep-check{display:flex;gap:8px;align-items:center;margin:8px 0}
+.nep-hint{color:var(--nep-ink-2);font-size:13px;line-height:1.5;margin:8px 4px}
+.nep-hint b{color:var(--nep-ink)}
+.nep-error{color:#ff6961;font-size:13px;margin:8px 4px}
+.nep-qr{display:block;width:200px;height:200px;margin:12px auto;background:#fff;border-radius:16px;padding:8px}
+.nep-section{margin:0 0 12px;padding:12px;border-radius:18px;background:var(--nep-raise)}
+.nep-section h4{margin:0 0 8px;font-size:15px;font-weight:600}
+#nep-panel .nep-section button,#nep-panel .nep-section input,#nep-panel .nep-section select{background:var(--nep-raise-2)}
+.nep-section .nep-row{min-height:0;padding:0}
+.nep-check{display:flex;gap:10px;align-items:center;margin:8px 4px}
+.nep-check input[type=checkbox]{accent-color:var(--nep-ok);width:18px;height:18px;flex:none}
 .nep-more{height:1px}
-.nep-log{font-size:.78em;line-height:1.5;font-family:ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all;opacity:.85;max-height:260px;overflow:auto}
+.nep-log{font-size:11px;line-height:1.55;font-family:ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all;
+color:var(--nep-ink-2);max-height:240px;overflow:auto;margin:0 4px}
+@media (prefers-reduced-motion:reduce){#nep-panel{animation:none}}
 `;
 
 const state = {
@@ -177,6 +201,7 @@ function build() {
 
     root = document.createElement('div');
     root.id = 'nep-panel';
+    root.className = 'nep-glass';
     root.hidden = true;
     root.innerHTML = `
         <div class="nep-now">
@@ -187,9 +212,9 @@ function build() {
         <div class="nep-progress"><span class="nep-cur">0:00</span><input type="range" min="0" max="1000" value="0" class="nep-seek"><span class="nep-dur">0:00</span></div>
         <div class="nep-controls">
             <button type="button" class="nep-icon nep-mode" title="播放模式"></button>
-            <button type="button" class="nep-icon fa-solid fa-backward-step nep-prev" title="上一首"></button>
+            <button type="button" class="nep-icon fa-solid fa-backward nep-prev" title="上一首"></button>
             <button type="button" class="nep-icon fa-solid fa-play nep-toggle" title="播放/暂停"></button>
-            <button type="button" class="nep-icon fa-solid fa-forward-step nep-next" title="下一首"></button>
+            <button type="button" class="nep-icon fa-solid fa-forward nep-next" title="下一首"></button>
             <button type="button" class="nep-icon fa-solid fa-list nep-goqueue" title="播放队列"></button>
             <button type="button" class="nep-icon fa-solid fa-volume-xmark nep-silent" title="静音播放"></button>
         </div>
@@ -219,6 +244,7 @@ function build() {
     const seek = root.querySelector('.nep-seek');
     seek.addEventListener('input', () => {
         seeking = true;
+        seek.style.setProperty('--nep-fill', `${seek.value / 10}%`);
         const s = engine.getState();
         root.querySelector('.nep-cur').textContent = fmtTime((seek.value / 1000) * (s.duration || 0));
     });
@@ -259,6 +285,7 @@ export function isOpen() {
 export function close() {
     if (!root) return;
     root.hidden = true;
+    miniBar.setAway(false);
     unsubscribe?.();
     unsubscribe = null;
     gen.listeners.delete(renderNow);
@@ -286,7 +313,8 @@ function renderNow() {
     const sub = root.querySelector('.nep-now-sub');
     const idle = s.silent ? '保持页面不被挂起，再点 🔇 回到音乐' : '去搜歌或打开歌单';
     sub.textContent = gen.label || (t ? `${t.ar}${s.trial ? '（试听片段）' : ''}` : idle);
-    sub.classList.toggle('nep-gen', !!gen.label);
+    sub.classList.toggle('nep-gen', !!gen.label && gen.state === 'generating');
+    sub.classList.toggle('nep-done', !!gen.label && gen.state !== 'generating' && gen.label.includes('已完成'));
     const silentBtn = root.querySelector('.nep-silent');
     silentBtn.classList.toggle('nep-on', s.silent);
     silentBtn.title = s.silent ? '结束静音播放' : '静音播放';
@@ -313,7 +341,9 @@ function renderProgress() {
     const s = engine.getState();
     root.querySelector('.nep-cur').textContent = fmtTime(s.currentTime);
     root.querySelector('.nep-dur').textContent = fmtTime(s.duration || (s.track?.dt || 0) / 1000);
-    root.querySelector('.nep-seek').value = s.duration ? Math.round((s.currentTime / s.duration) * 1000) : 0;
+    const seek = root.querySelector('.nep-seek');
+    seek.value = s.duration ? Math.round((s.currentTime / s.duration) * 1000) : 0;
+    seek.style.setProperty('--nep-fill', `${seek.value / 10}%`);
 }
 
 // ---------- 各个标签页 ----------
@@ -454,6 +484,11 @@ function renderAccount() {
     return html;
 }
 
+function options(key, list) {
+    return `<select data-setting="${key}">${list
+        .map(([v, label]) => `<option value="${v}" ${settings[key] === v ? 'selected' : ''}>${label}</option>`).join('')}</select>`;
+}
+
 function renderSettings() {
     const ms = 'mediaSession' in navigator ? '可用' : '不可用（锁屏不会显示歌名）';
     const log = getLog().slice().reverse().map((e) => {
@@ -464,11 +499,10 @@ function renderSettings() {
     return `
         <div class="nep-section"><h4>网易云账号</h4>${renderAccount()}</div>
         <div class="nep-section"><h4>常驻入口</h4>
-            <label class="nep-check">显示
-            <select data-setting="entry" data-kind="text">${[['float', '悬浮按钮（可拖动）'], ['bar', '输入框上方的迷你播放条'], ['off', '关闭']]
-                .map(([v, label]) => `<option value="${v}" ${settings.entry === v ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
-            <div class="nep-hint">关闭后只能从魔法棒菜单打开；正在播放时输入框上方仍会显示迷你播放条。悬浮按钮按住可以拖到任意位置。</div>
-            ${settings.entry === 'float' ? '<button type="button" data-act="float-reset">悬浮按钮回到默认位置</button>' : ''}
+            <label class="nep-check">显示${options('entry', ENTRY_OPTIONS)}</label>
+            <div class="nep-hint">选「关闭」后不显示任何常驻入口，从魔法棒菜单或扩展设置打开播放器。悬浮胶囊按住可拖到任意位置。</div>
+            ${settings.entry === 'float' ? '<button type="button" data-act="float-reset">悬浮胶囊回到顶部居中</button>' : ''}
+            <label class="nep-check">玻璃颜色${options('glass', GLASS_OPTIONS)}</label>
         </div>
         <div class="nep-section"><h4>播放</h4>
             <label class="nep-check"><input type="checkbox" data-setting="skipTrial" ${settings.skipTrial ? 'checked' : ''}>跳过只有试听片段的歌</label>
@@ -489,7 +523,7 @@ function renderSettings() {
             <button type="button" data-act="log-clear">清空</button></div>
         </div>
         <div class="nep-section"><h4>关闭播放器</h4>
-            <div class="nep-hint">停止播放、清空队列。常驻入口设为「关闭」时，迷你播放条也会隐藏。登录状态保留。</div>
+            <div class="nep-hint">停止播放、清空队列，收起悬浮胶囊或迷你播放条。再次从魔法棒菜单或扩展设置打开播放器时恢复。登录状态保留。</div>
             <button type="button" data-act="shutdown">停止并关闭</button>
         </div>`;
 }
@@ -707,12 +741,14 @@ function onBodyChange(e) {
     const key = e.target.dataset?.setting;
     if (!key) return;
     const { type, value, checked, dataset } = e.target;
+    if (key === 'entry') {
+        setEntry(value);
+        renderBody();
+        return;
+    }
+    if (key === 'glass') return void setGlass(value);
     settings[key] = type === 'checkbox' ? checked : (dataset.kind === 'text' ? value : Number(value));
     saveSettings();
-    if (key === 'entry') {
-        miniBar.apply();
-        renderBody();
-    }
 }
 
 function onBodyClick(e) {

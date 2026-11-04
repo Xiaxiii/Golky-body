@@ -40,8 +40,9 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   check(ours.length >= 2 && ours.every(u => /manifest\.json|\/index\.js$/.test(u)), '启动阶段只请求 manifest.json 和 index.js');
   check(!ours.some(u => /api\/plugins/.test(u)), '启动阶段不调用插件接口');
   check(await page.$('#nep-bar') === null || await page.$eval('#nep-bar', el => el.hidden), '没有历史记录时不显示迷你播放条');
-  const float0 = await page.evaluate(() => { const el = document.getElementById('nep-float'); const r = el?.getBoundingClientRect(); return el && { hidden: el.hidden, title: el.querySelector('.nep-title').textContent, right: Math.round(innerWidth - r.right), inView: r.top >= 0 && r.bottom <= innerHeight }; });
-  check(float0 && !float0.hidden && float0.title === '网易云音乐' && float0.right <= 6 && float0.inView, `默认显示悬浮按钮，贴右边: ${JSON.stringify(float0)}`);
+  const float0 = await page.evaluate(() => { const el = document.getElementById('nep-float'); const r = el?.getBoundingClientRect(); const bar = document.getElementById('top-bar')?.getBoundingClientRect(); return el && { hidden: el.hidden, title: el.querySelector('.nep-title').textContent, offCenter: Math.round(Math.abs(r.left + r.width / 2 - innerWidth / 2)), belowBar: !bar || r.top >= bar.bottom, inView: r.top >= 0 && r.bottom <= innerHeight }; });
+  check(float0 && !float0.hidden && float0.title === '网易云音乐' && float0.offCenter <= 2 && float0.belowBar && float0.inView, `默认显示悬浮胶囊，在顶栏下方居中: ${JSON.stringify(float0)}`);
+  check(await page.$('#nep-settings #nep-settings-entry') !== null, '扩展设置面板里有「网易云播放器」条目');
 
   const closePopups = async () => {
     for (let k = 0; k < 5 && await page.$('dialog.popup[open]'); k++) {
@@ -82,7 +83,7 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   artist = await page.evaluate(() => navigator.mediaSession.metadata?.artist);
   check(artist === '酒馆 · 回复已完成', `完成后 artist=${artist}`);
   const floatSub = await page.$eval('#nep-float .nep-sub', el => el.textContent);
-  check(floatSub === '酒馆 · 回复已完成', `悬浮按钮显示 ${floatSub}`);
+  check(floatSub === '酒馆 · 回复已完成', `悬浮胶囊显示 ${floatSub}`);
   // quiet 生成不算
   await page.evaluate(() => SillyTavern.getContext().eventSource.emit('generation_started', 'quiet', {}, false));
   // 备用信号：body data-generating
@@ -126,13 +127,14 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   await page.waitForFunction(() => document.getElementById('nep-audio').src.includes('song11'), null, { timeout: 15000 });
   check(true, '13 取不到地址被跳过，循环回 11');
 
-  // 暂停 / 继续
-  await page.click('#nep-float .nep-play');
+  // 暂停 / 继续（面板开着时悬浮胶囊让位，用面板上的播放键）
+  check(await page.$eval('#nep-float', el => el.classList.contains('nep-away')), '面板开着时悬浮胶囊让位');
+  await page.click('#nep-panel .nep-toggle');
   await sleep(300);
-  check(await page.evaluate(() => document.getElementById('nep-audio').paused), '悬浮按钮暂停');
-  await page.click('#nep-float .nep-play');
+  check(await page.evaluate(() => document.getElementById('nep-audio').paused), '面板播放键暂停');
+  await page.click('#nep-panel .nep-toggle');
   await sleep(500);
-  check(await page.evaluate(() => !document.getElementById('nep-audio').paused), '悬浮按钮继续');
+  check(await page.evaluate(() => !document.getElementById('nep-audio').paused), '面板播放键继续');
   await page.click('#nep-panel .nep-next');
   await page.waitForFunction(() => document.getElementById('nep-audio').src.includes('song12'), null, { timeout: 10000 });
   check(true, '下一首');
@@ -163,25 +165,25 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   const ours2 = reloadReqs.filter(isOurs).map(u => u.replace(B, ''));
   check(ours2.every(u => /manifest\.json|\/index\.js$/.test(u)), `有历史记录时启动也只请求两个文件: ${JSON.stringify(ours2)}`);
   const fl = await page.evaluate(() => ({ title: document.querySelector('#nep-float .nep-title').textContent, sub: document.querySelector('#nep-float .nep-sub').textContent }));
-  check(fl.title === 'B' && fl.sub === '点 ▶ 继续播放', `恢复后悬浮按钮: ${JSON.stringify(fl)}`);
+  check(fl.title === 'B' && fl.sub === '轻点 ▶ 继续播放', `恢复后悬浮胶囊: ${JSON.stringify(fl)}`);
   await page.screenshot({ path: OUT + '/7-restored.png' });
   await page.click('#nep-float .nep-play');
   await page.waitForFunction(() => { const a = document.getElementById('nep-audio'); return a && a.src.includes('song12') && !a.paused; }, null, { timeout: 10000 });
-  check(true, '点悬浮按钮的播放键后接着放 song12');
+  check(true, '点悬浮胶囊的播放键后接着放 song12');
 
-  // ---------- 悬浮按钮：拖动、点击展开/收起 ----------
+  // ---------- 悬浮胶囊：拖动、点击打开面板 ----------
   const panelOpen = () => page.evaluate(() => !!document.querySelector('#nep-panel:not([hidden])'));
   const rectOf = () => page.$eval('#nep-float', el => { const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
   const r0 = await rectOf();
   await page.mouse.move(r0.x + 20, r0.y + r0.h / 2);
   await page.mouse.down();
-  for (let k = 1; k <= 10; k++) await page.mouse.move(r0.x + 20 - 15 * k, r0.y + r0.h / 2 - 25 * k);
+  for (let k = 1; k <= 10; k++) await page.mouse.move(r0.x + 20 - 6 * k, r0.y + r0.h / 2 + 25 * k);
   await page.mouse.up();
   await sleep(300);
   const r1 = await rectOf();
   const savedPos = await page.evaluate(() => JSON.parse(localStorage.getItem('nep:v1:float-pos')));
-  check(Math.abs(r1.x - (r0.x - 150)) < 3 && Math.abs(r1.y - (r0.y - 250)) < 3, `拖动后位置 ${JSON.stringify(r0)} → ${JSON.stringify(r1)}`);
-  check(savedPos && savedPos.x < 1 && savedPos.y < 0.85, `拖动后位置已保存 ${JSON.stringify(savedPos)}`);
+  check(Math.abs(r1.x - (r0.x - 60)) < 3 && Math.abs(r1.y - (r0.y + 250)) < 3, `拖动后位置 ${JSON.stringify(r0)} → ${JSON.stringify(r1)}`);
+  check(savedPos && savedPos.x < 0.5 && savedPos.y > 0, `拖动后位置已保存 ${JSON.stringify(savedPos)}`);
   check(!(await panelOpen()) && await page.evaluate(() => !document.getElementById('nep-audio').paused), '拖动不会触发展开或暂停');
   // 手机上是触摸：用 CDP 发真正的触摸事件再拖一次
   const cdp = await ctx.newCDPSession(page);
@@ -202,7 +204,7 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   check(await page.evaluate(() => !document.getElementById('nep-audio').paused), '触摸点播放键继续');
   await page.tap('#nep-float .nep-info');
   await page.waitForSelector('#nep-panel:not([hidden])');
-  check(true, '点悬浮按钮展开面板');
+  check(await page.$eval('#nep-float', el => el.classList.contains('nep-away')), '点悬浮胶囊打开面板，面板开着时悬浮胶囊让位');
   await page.screenshot({ path: OUT + '/8-float-panel.png' });
 
   // ---------- 歌单刷新 ----------
@@ -229,9 +231,9 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   await page.screenshot({ path: OUT + '/9-playlist-refreshed.png' });
   // 收起，在 App 里又删了一首；过了检查间隔再打开面板，自动发现变化
   setPlaylistVersion(2);
-  await page.click('#nep-float .nep-info');
+  await page.click('#nep-panel .nep-close');
   await sleep(300);
-  check(!(await panelOpen()), '再点悬浮按钮收起面板');
+  check(!(await panelOpen()) && !(await page.$eval('#nep-float', el => el.classList.contains('nep-away'))), '收起面板后悬浮胶囊回来');
   await sleep(10500);
   await page.click('#nep-float .nep-info');
   await page.waitForFunction(() => document.querySelectorAll('#nep-panel .nep-row').length === 4 && document.querySelector('#nep-panel').textContent.includes('（4）'), null, { timeout: 5000 });
@@ -247,22 +249,27 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   await page.selectOption('#nep-panel select[data-setting=entry]', 'off');
   await sleep(200);
   vis = await page.evaluate(() => ({ bar: !!document.querySelector('#nep-bar:not([hidden])'), float: !!document.querySelector('#nep-float:not([hidden])') }));
-  check(!vis.float, `关闭常驻入口后悬浮按钮隐藏: ${JSON.stringify(vis)}`);
+  check(!vis.float && !vis.bar, `关闭常驻入口后什么都不显示（正在播放也不显示迷你播放条）: ${JSON.stringify(vis)}`);
+  await page.selectOption('#nep-panel select[data-setting=entry]', 'float');
+  await sleep(200);
+  vis = await page.evaluate(() => ({ bar: !!document.querySelector('#nep-bar:not([hidden])'), float: !!document.querySelector('#nep-float:not([hidden])') }));
+  check(vis.float && !vis.bar, `改回悬浮胶囊: ${JSON.stringify(vis)}`);
   await page.click('#nep-panel [data-act=shutdown]');
   await sleep(300);
   vis = await page.evaluate(() => ({ bar: !!document.querySelector('#nep-bar:not([hidden])'), float: !!document.querySelector('#nep-float:not([hidden])') }));
-  check(!vis.bar && !vis.float, `关闭常驻入口 + 停止并关闭后什么都不显示: ${JSON.stringify(vis)}`);
+  check(!vis.bar && !vis.float, `「停止并关闭」收起悬浮胶囊: ${JSON.stringify(vis)}`);
   await page.reload();
   await page.waitForSelector('#nep-menu-item', { state: 'attached', timeout: 60000 });
   await sleep(1500);
   vis = await page.evaluate(() => ({ bar: !!document.querySelector('#nep-bar:not([hidden])'), float: !!document.querySelector('#nep-float:not([hidden])') }));
-  check(!vis.bar && !vis.float, `刷新页面后设置仍然生效: ${JSON.stringify(vis)}`);
+  check(!vis.bar && !vis.float, `刷新页面后仍然收起: ${JSON.stringify(vis)}`);
 
   // ---------- 大歌单：分批渲染、滑到底自动加载下一页 ----------
   setPlaylistVersion(498); // 500 首
   await page.click('#extensionsMenuButton');
   await page.click('#nep-menu-item');
   await page.waitForSelector('#nep-panel:not([hidden])');
+  check(await page.evaluate(() => !!document.querySelector('#nep-float:not([hidden])')), '从魔法棒菜单重新打开播放器后悬浮胶囊恢复');
   await page.click('#nep-panel .nep-tabs button[data-tab=playlists]');
   await page.waitForFunction(() => document.querySelector('#nep-panel .nep-row[data-act=open-playlist] .nep-row-sub')?.textContent.startsWith('500 首'), null, { timeout: 5000 });
   await page.click('#nep-panel [data-act=open-playlist]');
