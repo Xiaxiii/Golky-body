@@ -1,12 +1,11 @@
 // 展开面板：搜索、我的歌单、播放队列、账号与设置。点开播放器时才加载。
-import { api, settings, saveSettings, getLog, clearLog, gen, miniBar, resetFloatPosition, TOKENS } from './index.js';
+import { api, settings, saveSettings, getLog, clearLog, gen, miniBar, resetFloatPosition, setEntry, setGlass, ENTRY_OPTIONS, GLASS_OPTIONS } from './index.js';
 import * as engine from './engine.js';
 
 const CSS = `
-#nep-panel{${TOKENS};position:fixed;z-index:2900;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
+#nep-panel{position:fixed;z-index:2900;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
 top:calc(var(--topBarBlockSize,50px) + env(safe-area-inset-top) + 6px);height:min(70dvh,640px);max-width:560px;margin:0 auto;
-display:flex;flex-direction:column;box-sizing:border-box;border-radius:34px;background:var(--nep-ground);color:var(--nep-ink);
-box-shadow:0 18px 50px rgba(0,0,0,.45);font-size:15px;line-height:1.35;white-space:normal;overflow:hidden;contain:layout style;
+display:flex;flex-direction:column;box-sizing:border-box;border-radius:34px;font-size:15px;line-height:1.35;white-space:normal;overflow:hidden;contain:layout style;
 transform-origin:50% 0;animation:nep-sheet .5s var(--nep-spring)}
 @keyframes nep-sheet{from{opacity:0;transform:scale(.6,.2)}40%{opacity:1}}
 #nep-panel[hidden]{display:none}
@@ -45,7 +44,7 @@ background:linear-gradient(var(--nep-ink),var(--nep-ink)) 0/var(--nep-fill,0%) 1
 #nep-panel .nep-controls .nep-on{color:var(--nep-accent)}
 .nep-tabs{display:flex;gap:2px;margin:0 14px;padding:2px;border-radius:11px;background:var(--nep-raise)}
 #nep-panel .nep-tabs button{flex:1;padding:6px 0;border-radius:9px;background:transparent;color:var(--nep-ink-2);font-size:13px}
-#nep-panel .nep-tabs button.nep-active{background:var(--nep-raise-3);color:var(--nep-ink)}
+#nep-panel .nep-tabs button.nep-active{background:var(--nep-seg);color:var(--nep-ink);box-shadow:0 1px 4px rgba(0,0,0,.12)}
 .nep-body{flex:1;min-height:0;contain:content;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
 padding:12px 12px calc(16px + env(safe-area-inset-bottom))}
 .nep-row{display:flex;align-items:center;gap:12px;min-height:56px;padding:6px 8px;border-radius:14px;cursor:pointer}
@@ -202,6 +201,7 @@ function build() {
 
     root = document.createElement('div');
     root.id = 'nep-panel';
+    root.className = 'nep-glass';
     root.hidden = true;
     root.innerHTML = `
         <div class="nep-now">
@@ -484,6 +484,11 @@ function renderAccount() {
     return html;
 }
 
+function options(key, list) {
+    return `<select data-setting="${key}">${list
+        .map(([v, label]) => `<option value="${v}" ${settings[key] === v ? 'selected' : ''}>${label}</option>`).join('')}</select>`;
+}
+
 function renderSettings() {
     const ms = 'mediaSession' in navigator ? '可用' : '不可用（锁屏不会显示歌名）';
     const log = getLog().slice().reverse().map((e) => {
@@ -494,11 +499,10 @@ function renderSettings() {
     return `
         <div class="nep-section"><h4>网易云账号</h4>${renderAccount()}</div>
         <div class="nep-section"><h4>常驻入口</h4>
-            <label class="nep-check">显示
-            <select data-setting="entry" data-kind="text">${[['float', '灵动岛（可拖动）'], ['bar', '输入框上方的迷你播放条'], ['off', '关闭']]
-                .map(([v, label]) => `<option value="${v}" ${settings.entry === v ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
-            <div class="nep-hint">关闭后只能从魔法棒菜单或扩展设置打开；正在播放时输入框上方仍会显示迷你播放条。灵动岛轻点展开，按住可拖到任意位置。</div>
-            ${settings.entry === 'float' ? '<button type="button" data-act="float-reset">灵动岛回到顶部居中</button>' : ''}
+            <label class="nep-check">显示${options('entry', ENTRY_OPTIONS)}</label>
+            <div class="nep-hint">选「关闭」后不显示任何常驻入口，从魔法棒菜单或扩展设置打开播放器。悬浮胶囊按住可拖到任意位置。</div>
+            ${settings.entry === 'float' ? '<button type="button" data-act="float-reset">悬浮胶囊回到顶部居中</button>' : ''}
+            <label class="nep-check">玻璃颜色${options('glass', GLASS_OPTIONS)}</label>
         </div>
         <div class="nep-section"><h4>播放</h4>
             <label class="nep-check"><input type="checkbox" data-setting="skipTrial" ${settings.skipTrial ? 'checked' : ''}>跳过只有试听片段的歌</label>
@@ -519,7 +523,7 @@ function renderSettings() {
             <button type="button" data-act="log-clear">清空</button></div>
         </div>
         <div class="nep-section"><h4>关闭播放器</h4>
-            <div class="nep-hint">停止播放、清空队列。常驻入口设为「关闭」时，迷你播放条也会隐藏。登录状态保留。</div>
+            <div class="nep-hint">停止播放、清空队列，收起悬浮胶囊或迷你播放条。再次从魔法棒菜单或扩展设置打开播放器时恢复。登录状态保留。</div>
             <button type="button" data-act="shutdown">停止并关闭</button>
         </div>`;
 }
@@ -737,12 +741,14 @@ function onBodyChange(e) {
     const key = e.target.dataset?.setting;
     if (!key) return;
     const { type, value, checked, dataset } = e.target;
+    if (key === 'entry') {
+        setEntry(value);
+        renderBody();
+        return;
+    }
+    if (key === 'glass') return void setGlass(value);
     settings[key] = type === 'checkbox' ? checked : (dataset.kind === 'text' ? value : Number(value));
     saveSettings();
-    if (key === 'entry') {
-        miniBar.apply();
-        renderBody();
-    }
 }
 
 function onBodyClick(e) {
