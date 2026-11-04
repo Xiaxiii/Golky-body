@@ -18,5 +18,12 @@ module.exports = {
   user_playlist: async (q) => { rec('user_playlist')(q); return { body: { playlist: [{ id: 500, name: '我喜欢的音乐', coverImgUrl: '', trackCount: plSongs().length, trackUpdateTime: 1700000000000 + plVersion(), specialType: 5, creator: { userId: 99 } }] } }; },
   playlist_track_all: async (q) => { rec('playlist_track_all')(q); const off = Number(q.offset); const s = plSongs().slice(off, off + Number(q.limit)); return { body: { songs: s, privileges: s.map(x => ({ id: x.id, st: 0, pl: 1 })) } }; },
   song_url_v1: async (q) => { rec('song_url_v1')(q); if (q.id === '2') return { body: { data: [{ id: 2, url: null, code: 404 }] } }; if (q.id === '13') throw { status: 460, body: { code: 460, msg: 'Cheating' } }; return { body: { data: [{ id: Number(q.id), url: 'http://127.0.0.1:8124/song' + q.id + '.wav', br: 128000, expi: 1200, freeTrialInfo: null }] } }; },
+  recommend_songs: async (q) => { rec('recommend_songs')(q); return { body: { code: 200, data: { dailySongs: [song(21, '每日一'), song(22, '每日二'), song(23, '每日三')] } } }; },
+  recommend_resource: async (q) => { rec('recommend_resource')(q); return { body: { code: 200, recommend: [{ id: 700, name: '推荐歌单一', picUrl: '', trackCount: 3, playcount: 1200 }] } }; },
+  personalized: async (q) => { rec('personalized')(q); return { body: { code: 200, result: [{ id: 701, name: '公共推荐', picUrl: '', trackCount: 3, playCount: 99 }] } }; },
+  toplist_detail: async (q) => { rec('toplist_detail')(q); return { body: { code: 200, list: [{ id: 800, name: '飙升榜', coverImgUrl: '', updateFrequency: '每天更新', tracks: [{ first: 'A', second: '歌手11' }] }, { id: 801, name: '歌手榜', tracks: [] }] } }; },
+  likelist: async (q) => { rec('likelist')(q); return { body: { code: 200, ids: [11] } }; },
+  like: async (q) => { rec('like')(q); return { body: { code: 200 } }; },
+  playlist_tracks: async (q) => { rec('playlist_tracks')(q); return { body: q.tracks === '11' && q.op === 'add' ? { code: 502, message: '歌单内歌曲重复' } : { code: 200 } }; },
   song_url: async (q) => { rec('song_url')(q); throw { status: 460, body: { code: 460, msg: 'Cheating' } }; },
 };

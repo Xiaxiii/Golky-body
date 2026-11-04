@@ -135,6 +135,21 @@ export function playNow(track) {
     startIndex(at, { reason: '点播' });
 }
 
+/** 插到当前曲目后面，不打断正在放的歌；什么都没在放时直接开始播放。 */
+export function insertNext(tracks) {
+    if (state.index < 0 || !state.queue.length) {
+        playTracks(tracks, 0, null);
+        return;
+    }
+    state.queue.splice(state.index + 1, 0, ...tracks);
+    // 「上一首」记录里排在插入点之后的位置都往后挪
+    history = history.map(h => (h > state.index ? h + tracks.length : h));
+    resetPrefetch();
+    saveQueue();
+    emit();
+    if (current) schedulePrefetch();
+}
+
 export function enqueue(tracks) {
     state.queue.push(...tracks);
     resetPrefetch();

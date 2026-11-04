@@ -370,21 +370,24 @@ const CSS = `
 #nep-float,#nep-bar,#nep-panel{
 --nep-glass:rgba(250,250,252,.96);--nep-sheen:rgba(255,255,255,.85);--nep-rim:rgba(255,255,255,1);--nep-rim-2:rgba(255,255,255,.35);
 --nep-ink:#1d1d1f;--nep-ink-2:rgba(60,60,67,.66);--nep-raise:rgba(118,118,128,.12);--nep-raise-2:rgba(118,118,128,.2);
---nep-raise-3:rgba(118,118,128,.3);--nep-seg:#fff;--nep-accent:#d92d3e;--nep-ok:#1d8a3a;--nep-busy:#b35c00;
+--nep-raise-3:rgba(118,118,128,.3);--nep-seg:#fff;--nep-paper:#fff;--nep-accent:#d33a31;--nep-on-accent:#fff;
+--nep-tint:#fbe9e7;--nep-tint-2:#f6d3cf;--nep-tint-ink:#8a1f19;--nep-ok:#1d8a3a;--nep-busy:#b35c00;
 --nep-shadow:0 12px 32px rgba(0,0,0,.16),0 2px 6px rgba(0,0,0,.08);--nep-spring:cubic-bezier(.32,1.28,.48,1);
 font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
 -webkit-font-smoothing:antialiased}
 :root[data-nep-glass=dark] #nep-float,:root[data-nep-glass=dark] #nep-bar,:root[data-nep-glass=dark] #nep-panel{
 --nep-glass:rgba(34,34,36,.96);--nep-sheen:rgba(255,255,255,.13);--nep-rim:rgba(255,255,255,.42);--nep-rim-2:rgba(255,255,255,.08);
 --nep-ink:#fff;--nep-ink-2:rgba(235,235,245,.62);--nep-raise:rgba(118,118,128,.24);--nep-raise-2:rgba(118,118,128,.34);
---nep-raise-3:rgba(118,118,128,.46);--nep-seg:rgba(99,99,102,.95);--nep-accent:#ff5263;--nep-ok:#30d158;--nep-busy:#ff9f0a;
+--nep-raise-3:rgba(118,118,128,.46);--nep-seg:rgba(99,99,102,.95);--nep-paper:#2c2c2e;--nep-accent:#ff5c52;--nep-on-accent:#fff;
+--nep-tint:rgba(255,92,82,.14);--nep-tint-2:rgba(255,92,82,.24);--nep-tint-ink:#ffb4ae;--nep-ok:#30d158;--nep-busy:#ff9f0a;
 --nep-shadow:0 12px 32px rgba(0,0,0,.4),0 2px 6px rgba(0,0,0,.25)}
-.nep-glass{color:var(--nep-ink);background:linear-gradient(180deg,var(--nep-sheen),rgba(255,255,255,0) 60%),var(--nep-glass);
+/* 液态玻璃的顶部高光与边缘反光是用户指定的样式 */
+.nep-glass{color:var(--nep-ink);/* taste-skill-ignore: 玻璃高光 */background:linear-gradient(180deg,var(--nep-sheen),rgba(255,255,255,0) 60%),var(--nep-glass);
 box-shadow:inset 0 1px 0 var(--nep-rim),inset 0 -1px 0 var(--nep-rim-2),var(--nep-shadow)}
 .nep-glass::before{content:"";position:absolute;inset:0;z-index:0;padding:1px;border-radius:inherit;pointer-events:none;
-background:linear-gradient(135deg,var(--nep-rim),var(--nep-rim-2) 32%,rgba(255,255,255,0) 50%,var(--nep-rim-2) 70%,var(--nep-rim));
--webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
-mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+/* taste-skill-ignore: 玻璃边缘反光 */background:linear-gradient(135deg,var(--nep-rim),var(--nep-rim-2) 32%,rgba(255,255,255,0) 50%,var(--nep-rim-2) 70%,var(--nep-rim));
+/* taste-skill-ignore: 玻璃边缘反光 */-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+/* taste-skill-ignore: 玻璃边缘反光 */mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
 #nep-panel{--nep-glass:#f7f7f9}
 :root[data-nep-glass=dark] #nep-panel{--nep-glass:#222224}
 #nep-bar[hidden],#nep-float[hidden]{display:none!important}
@@ -781,7 +784,7 @@ function addSettingsDrawer() {
             </div>
             <label for="nep-settings-entry">常驻入口</label>${select('nep-settings-entry', ENTRY_OPTIONS)}
             <label for="nep-settings-glass">玻璃颜色</label>${select('nep-settings-glass', GLASS_OPTIONS)}
-            <small>搜歌、歌单、扫码登录和其他设置在播放器的「账号/设置」里。</small>
+            <small>搜歌、歌单、扫码登录和其他设置在播放器右上角的「账号与设置」里。</small>
         </div>`;
     host.appendChild(el);
     const entry = el.querySelector('#nep-settings-entry');
