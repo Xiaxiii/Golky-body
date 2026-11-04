@@ -84,7 +84,7 @@ export function startSilent() {
     // 正在放歌时换成静音，浏览器会先发一次 pause，下面按换 src 忽略掉
     if (!isSilence()) lastSrcSetAt = Date.now();
     playSilence();
-    miniBar.set({ title: '静音播放', artist: '保持页面不被挂起', pic: '', playing: true, needTap: false, note: '' });
+    miniBar.set({ title: '静音播放', artist: '保持页面不被挂起', album: '', id: null, pic: '', playing: true, needTap: false, note: '' });
     updateMetadata();
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
     emit();
@@ -100,7 +100,7 @@ export function stopSilent() {
         return;
     }
     audio.pause();
-    miniBar.set({ title: '', artist: '', pic: '', playing: false, note: '' });
+    miniBar.set({ title: '', artist: '', album: '', id: null, pic: '', playing: false, note: '' });
     if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = null;
         navigator.mediaSession.playbackState = 'none';
@@ -133,6 +133,21 @@ export function playNow(track) {
     resetPrefetch();
     saveQueue();
     startIndex(at, { reason: '点播' });
+}
+
+/** 插到当前曲目后面，不打断正在放的歌；什么都没在放时直接开始播放。 */
+export function insertNext(tracks) {
+    if (state.index < 0 || !state.queue.length) {
+        playTracks(tracks, 0, null);
+        return;
+    }
+    state.queue.splice(state.index + 1, 0, ...tracks);
+    // 「上一首」记录里排在插入点之后的位置都往后挪
+    history = history.map(h => (h > state.index ? h + tracks.length : h));
+    resetPrefetch();
+    saveQueue();
+    emit();
+    if (current) schedulePrefetch();
 }
 
 export function enqueue(tracks) {
@@ -259,7 +274,7 @@ export function stopAndClear() {
         navigator.mediaSession.metadata = null;
         navigator.mediaSession.playbackState = 'none';
     }
-    miniBar.set({ title: '', artist: '', pic: '', playing: false, needTap: false, note: '' });
+    miniBar.set({ title: '', artist: '', album: '', id: null, pic: '', playing: false, needTap: false, note: '' });
     miniBar.hide();
     emit();
 }
@@ -283,7 +298,7 @@ async function startIndex(i, { startAt = 0, reason = '' } = {}) {
     current = null;
     // 只记当前是第几首（写在 now 里），不重写整个队列：大歌单的队列有几百 KB
     savePosition(true, track, startAt);
-    miniBar.set({ title: track.name, artist: track.ar, pic: track.pic || '', needTap: false, note: '' });
+    miniBar.set({ title: track.name, artist: track.ar, album: track.al || '', id: track.id, pic: track.pic || '', needTap: false, note: '' });
     updateMetadata(track);
     emit();
 
@@ -716,9 +731,9 @@ export function init() {
         if (document.visibilityState === 'hidden') persist();
     });
     if (silentMode && !isUnlocked()) {
-        miniBar.set({ title: '静音播放', artist: '', pic: '', needTap: true });
+        miniBar.set({ title: '静音播放', artist: '', album: '', id: null, pic: '', needTap: true });
     } else if (state.queue.length && !isUnlocked()) {
         const track = state.queue[state.index];
-        miniBar.set({ title: track?.name || '', artist: track?.ar || '', pic: track?.pic || '', needTap: true });
+        miniBar.set({ title: track?.name || '', artist: track?.ar || '', album: track?.al || '', id: track?.id ?? null, pic: track?.pic || '', needTap: true });
     }
 }

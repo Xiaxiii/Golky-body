@@ -13,7 +13,7 @@ const DATA_DIR = path.join(PLUGIN_DIR, 'data');
 export const info = {
     id: 'netease-player',
     name: 'NetEase Player',
-    description: 'NetEase Cloud Music search, playlists, play URLs and QR login for the in-page player.',
+    description: 'NetEase Cloud Music search, playlists, recommendations, likes, playlist edits, play URLs and QR login for the in-page player.',
 };
 
 // ---------- 登录 cookie：只存在服务器本地，按酒馆用户分开 ----------
@@ -278,6 +278,130 @@ export async function init(router) {
         }
         return page;
     });
+
+    // ---------- 首页：每日推荐、推荐歌单、排行榜 ----------
+
+    // 每日推荐（需要登录）。网易云每天 6 点（北京时间）换一批，缓存按这个日期分开
+    route(router, '/home/daily', async (req) => {
+        if (!readCookie(req)) throw needLogin();
+        const day = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const key = `${userHandle(req)}:daily:${day}`;
+        let page = cacheGet(key);
+        if (!page) {
+            const result = await callNcm('recommend_songs', {}, ctxOf(req));
+            const songs = result?.data?.dailySongs || [];
+            const privileges = new Map((result?.data?.privileges || []).map(p => [p.id, p]));
+            page = { tracks: songs.map(s => mapTrack(s, privileges.get(s.id))), day };
+            cacheSet(key, page, 30 * 60 * 1000);
+        }
+        return page;
+    });
+
+    // 推荐歌单：登录后用「每日推荐歌单」，未登录或失败时用公共推荐
+    route(router, '/home/playlists', async (req) => {
+        const loggedIn = !!readCookie(req);
+        const key = loggedIn ? `${userHandle(req)}:rec-playlists` : 'rec-playlists';
+        let list = cacheGet(key);
+        if (!list) {
+            let items = [];
+            if (loggedIn) {
+                try {
+                    items = (await callNcm('recommend_resource', {}, ctxOf(req)))?.recommend || [];
+                } catch (error) {
+                    if (error.code === 301) throw error;
+                }
+            }
+            if (!items.length) {
+                items = (await callNcm('personalized', { limit: 12 }, ctxOf(req, { auth: false })))?.result || [];
+            }
+            list = items.slice(0, 12).map(p => ({
+                id: p.id,
+                name: p.name || '',
+                cover: p.picUrl || p.coverImgUrl || '',
+                count: p.trackCount || 0,
+                plays: p.playcount ?? p.playCount ?? 0,
+            }));
+            cacheSet(key, list, 30 * 60 * 1000);
+        }
+        return { playlists: list };
+    });
+
+    // 排行榜：官方榜单的前 4 个，各带前三首的歌名
+    route(router, '/home/toplists', async (req) => {
+        let list = cacheGet('toplists');
+        if (!list) {
+            const result = await callNcm('toplist_detail', {}, ctxOf(req, { auth: false }));
+            list = (result?.list || [])
+                .filter(t => Array.isArray(t.tracks) && t.tracks.length)
+                .slice(0, 4)
+                .map(t => ({
+                    id: t.id,
+                    name: t.name || '',
+                    cover: t.coverImgUrl || '',
+                    update: t.updateFrequency || '',
+                    top: t.tracks.slice(0, 3).map(x => ({ name: x.first || '', ar: x.second || '' })),
+                }));
+            cacheSet('toplists', list, 30 * 60 * 1000);
+        }
+        return { toplists: list };
+    });
+
+    // ---------- 红心、收藏到歌单：写回网易云账号 ----------
+
+    // 写操作后清掉这个用户的歌单缓存，下次读到的就是网易云上的最新内容
+    const clearUserLists = (req) => {
+        const user = userHandle(req);
+        cacheClearPrefix(`${user}:pl:`);
+        cacheClearPrefix(`${user}:playlists`);
+        cacheClearPrefix(`${user}:likes`);
+    };
+
+    const checkWrite = (result, fallback) => {
+        const code = Number(result?.code) || 0;
+        if (code === 200) return;
+        if (code === 301) throw needLogin();
+        const message = code === 502 ? '歌单里已经有这首歌' : (result?.message || result?.msg || fallback);
+        const error = new Error(message);
+        error.code = code || 500;
+        throw error;
+    };
+
+    route(router, '/likes', async (req) => {
+        const account = await fetchAccount(req);
+        if (!account) throw needLogin();
+        const key = `${userHandle(req)}:likes`;
+        let ids = cacheGet(key);
+        if (!ids) {
+            const result = await callNcm('likelist', { uid: account.uid }, ctxOf(req));
+            ids = (result?.ids || []).map(Number).filter(Number.isFinite);
+            cacheSet(key, ids, 2 * 60 * 1000);
+        }
+        return { ids };
+    });
+
+    route(router, '/like', async (req, body) => {
+        if (!readCookie(req)) throw needLogin();
+        const id = toId(body.id);
+        const like = body.like !== false;
+        const result = await callNcm('like', { id, like: like ? 'true' : 'false' }, ctxOf(req));
+        checkWrite(result, like ? '红心失败' : '取消红心失败');
+        clearUserLists(req);
+        return { id: Number(id), like };
+    });
+
+    const editPlaylist = (op) => async (req, body) => {
+        if (!readCookie(req)) throw needLogin();
+        const pid = toId(body.pid);
+        const ids = (Array.isArray(body.ids) ? body.ids : [body.ids]).slice(0, 100).map(toId);
+        if (!ids.length) throw badRequest('没有要处理的歌');
+        const result = await callNcm('playlist_tracks', { op, pid, tracks: ids.join(',') }, ctxOf(req));
+        checkWrite(result, op === 'add' ? '收藏到歌单失败' : '从歌单删除失败');
+        clearUserLists(req);
+        return { pid: Number(pid), count: ids.length };
+    };
+
+    route(router, '/playlist/add', editPlaylist('add'));
+    route(router, '/playlist/remove', editPlaylist('del'));
 
     route(router, '/url', async (req, body) => {
         const id = toId(body.id);
