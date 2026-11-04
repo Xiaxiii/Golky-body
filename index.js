@@ -1123,13 +1123,15 @@ function addSettingsDrawer() {
     el.className = 'inline-drawer';
     el.innerHTML = `
         <div class="inline-drawer-toggle inline-drawer-header">
-            <b>网易云播放器</b><div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+            <b>网易云播放器 <small class="nep-ver"></small></b><div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
         </div>
         <div class="inline-drawer-content">
             <div class="flex-container">
                 <div class="menu_button menu_button_icon" data-act="open"><i class="fa-solid fa-music"></i><span>打开播放器</span></div>
+                <div class="menu_button menu_button_icon" data-act="check" ${EXT_DIR ? '' : 'hidden'}><i class="fa-solid fa-rotate"></i><span>检查更新</span></div>
                 <div class="menu_button menu_button_icon" data-act="reset"><i class="fa-solid fa-arrows-to-dot"></i><span>悬浮胶囊回到顶部居中</span></div>
             </div>
+            <div class="nep-update-msg" hidden></div>
             <label for="nep-settings-entry">常驻入口</label>${select('nep-settings-entry', ENTRY_OPTIONS)}
             <label for="nep-settings-glass">玻璃颜色</label>${select('nep-settings-glass', GLASS_OPTIONS)}
             <label for="nep-settings-glassfx">玻璃质感</label>${select('nep-settings-glassfx', GLASSFX_OPTIONS)}
@@ -1147,6 +1149,148 @@ function addSettingsDrawer() {
     fx.addEventListener('change', () => setGlassFx(fx.value));
     el.querySelector('[data-act=open]').addEventListener('click', () => openPanel());
     el.querySelector('[data-act=reset]').addEventListener('click', () => resetFloatPosition());
+    bindUpdater(el);
+}
+
+// ---------- 检查更新 / 更新（用酒馆自带的扩展更新接口，和「管理扩展」里的更新按钮效果相同） ----------
+
+// 扩展目录名随安装方式不同（Git 安装时是仓库名），从本文件的地址里取
+const EXT_DIR = (() => {
+    try {
+        return (/\/third-party\/([^/?#]+)\//.exec(decodeURIComponent(import.meta.url)) || [])[1] || null;
+    } catch {
+        return null;
+    }
+})();
+const EXT_URL = (file) => new URL(file, import.meta.url).href;
+// 这一版前端需要的服务端插件最低版本
+const SERVER_MIN = '0.5.0';
+let runningVersion = '';
+
+async function manifestVersion(url) {
+    try {
+        const r = await fetch(url, { cache: 'no-store' });
+        return r.ok ? String((await r.json())?.version || '') : '';
+    } catch {
+        return '';
+    }
+}
+
+function versionLess(a, b) {
+    const pa = String(a).split('.').map(Number);
+    const pb = String(b).split('.').map(Number);
+    for (let i = 0; i < 3; i++) {
+        if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) < (pb[i] || 0);
+    }
+    return false;
+}
+
+async function extensionType() {
+    try {
+        const { getRequestHeaders } = SillyTavern.getContext();
+        const r = await fetch('/api/extensions/discover', { headers: getRequestHeaders() });
+        const list = r.ok ? await r.json() : [];
+        return list.find(x => x.name === `third-party/${EXT_DIR}`)?.type || 'local';
+    } catch {
+        return 'local';
+    }
+}
+
+async function extApi(path) {
+    const { getRequestHeaders } = SillyTavern.getContext();
+    const r = await fetch(`/api/extensions/${path}`, {
+        method: 'POST',
+        headers: getRequestHeaders(),
+        body: JSON.stringify({ extensionName: EXT_DIR, global: await extensionType() === 'global' }),
+    });
+    if (!r.ok) throw new Error((await r.text().catch(() => '')) || `HTTP ${r.status}`);
+    return r.json();
+}
+
+/**
+ * 服务端插件的版本。0.5.3 起插件在 status 里报版本；更早的不报，
+ * 就试一下 0.5 新增的接口（传一个不合法的 id，不会请求网易云）：返回 404 说明是 0.4 及以前。
+ */
+async function serverVersion() {
+    try {
+        const data = await api('status');
+        if (data.pluginVersion) return data.pluginVersion;
+    } catch {
+        return '';
+    }
+    try {
+        await api('like', { id: 'x' });
+    } catch (error) {
+        return /404/.test(error.message) ? '0.4' : '0.5';
+    }
+    return '0.5';
+}
+
+function bindUpdater(el) {
+    const ver = el.querySelector('.nep-ver');
+    const msg = el.querySelector('.nep-update-msg');
+    const esc = (t) => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const button = (act, icon, text) => `<div class="menu_button menu_button_icon" data-act="${act}"><i class="fa-solid ${icon}"></i><span>${text}</span></div>`;
+    const say = (html) => {
+        msg.hidden = false;
+        msg.innerHTML = `<div class="flex-container alignItemsCenter">${html}</div>`;
+    };
+    manifestVersion(EXT_URL('manifest.json')).then((v) => {
+        runningVersion = v;
+        ver.textContent = v ? `v${v}` : '';
+    });
+    // 展开条目时顺带看一眼服务端插件版本，落后时提示手动更新
+    let serverChecked = false;
+    el.querySelector('.inline-drawer-toggle').addEventListener('click', async () => {
+        if (serverChecked) return;
+        serverChecked = true;
+        const sv = await serverVersion();
+        if (sv && versionLess(sv, SERVER_MIN)) {
+            say(`服务端插件版本较旧（${esc(sv)}），首页推荐、红心、收藏到歌单需要 ${SERVER_MIN} 以上。在服务器上按 README「从 0.4 升级到 0.5」覆盖插件文件并重启酒馆。`);
+        }
+    });
+    let busy = false;
+    msg.parentElement.addEventListener('click', async (e) => {
+        const b = e.target.closest('[data-act]');
+        const act = b?.dataset.act;
+        if (!['check', 'update', 'reload'].includes(act)) return;
+        if (act === 'reload') return void location.reload();
+        if (busy) return;
+        busy = true;
+        const icon = b.querySelector('i');
+        icon?.classList.add('fa-spin');
+        try {
+            if (act === 'check') {
+                say('正在检查更新…');
+                const v = await extApi('version');
+                const disk = await manifestVersion(EXT_URL('manifest.json'));
+                if (v.isUpToDate) {
+                    // 已经更新过但还没刷新页面：磁盘上的版本比正在运行的新
+                    say(disk && disk !== runningVersion
+                        ? `已是最新版本（${esc(disk)}），刷新页面后生效。${button('reload', 'fa-arrows-rotate', '刷新页面')}`
+                        : `已是最新版本（${esc(runningVersion || disk)}）。`);
+                } else {
+                    const branch = encodeURIComponent(v.currentBranchName || 'Golgi');
+                    const remote = await manifestVersion(`https://raw.githubusercontent.com/Xiaxiii/Golky-body/${branch}/manifest.json`);
+                    say(`检测到新版本${remote ? `（${esc(remote)}）` : ''}。${button('update', 'fa-download', '更新')}`);
+                }
+            } else if (act === 'update') {
+                say('正在更新…');
+                const v = await extApi('update');
+                const disk = await manifestVersion(EXT_URL('manifest.json'));
+                say(v.isUpToDate ? '已是最新版本。'
+                    : `已更新${disk ? `到 ${esc(disk)}` : ''}，刷新页面后生效。${button('reload', 'fa-arrows-rotate', '刷新页面')}`);
+                // 新版要求的服务端插件版本更高时提醒
+                const sv = await serverVersion();
+                if (sv && versionLess(sv, SERVER_MIN)) msg.insertAdjacentHTML('beforeend', `<small>服务端插件（${esc(sv)}）也需要在服务器上更新，见 README。</small>`);
+            }
+        } catch (error) {
+            say(`更新失败：${esc(String(error.message).slice(0, 200))}。可以在「管理扩展」里更新。`);
+        } finally {
+            icon?.classList.remove('fa-spin');
+            busy = false;
+        }
+    });
 }
 
 /** 换常驻入口。主动选了一个入口，就撤销「停止并关闭」的收起。 */
