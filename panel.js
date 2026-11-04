@@ -1,7 +1,7 @@
 // 展开面板：首页（每日推荐、我的歌单、推荐歌单、排行榜）、歌单、搜索、播放队列、正在播放、账号与设置。
 // 点开播放器时才加载。页面是一个栈：首页在底，其余页面推入，左上角返回。
 import {
-    api, store, settings, saveSettings, getLog, clearLog, gen, miniBar, resetFloatPosition,
+    api, store, settings, saveSettings, getLog, clearLog, gen, miniBar, resetFloatPosition, likes,
     setEntry, setGlass, setGlassFx, ENTRY_OPTIONS, GLASS_OPTIONS, GLASSFX_OPTIONS,
 } from './index.js';
 import * as engine from './engine.js';
@@ -208,8 +208,6 @@ const state = {
     playlistsError: '',
     playlistsLoading: false,
     playlist: null, // { kind: mine|rec|top|daily, meta, tracks, hasMore, loading, error }
-    likes: null, // Set<number>
-    likesLoading: false,
     account: null,
     accountError: '',
     qr: null,
@@ -261,7 +259,7 @@ function badges(t) {
     return '';
 }
 
-const isLiked = (id) => !!state.likes?.has(Number(id));
+const isLiked = (id) => likes.has(id);
 
 // ---------- 长列表分批渲染：先画 LIST_STEP 行，滑到底附近再接着画 ----------
 
@@ -400,6 +398,7 @@ function build() {
         const nav = e.target.closest('[data-nav]');
         if (nav) go(nav.dataset.nav);
     });
+    likes.listeners.add(afterLikeChange);
     root.addEventListener('click', onClick);
     root.addEventListener('submit', onSubmit);
     root.addEventListener('change', onChange);
@@ -922,26 +921,19 @@ function renderSheet() {
 
 async function toggleLike(track) {
     if (!loggedIn()) return void toast('warning', '先在「账号与设置」里扫码登录网易云');
-    const id = Number(track.id);
-    const like = !isLiked(id);
-    state.likes ??= new Set();
-    // 先改界面，失败再改回来
-    if (like) state.likes.add(id);
-    else state.likes.delete(id);
-    afterLikeChange();
     try {
-        await api('like', { id, like });
+        // 红心列表和胶囊卡片共用，界面先改，失败时 likes 会改回来并通知重画
+        const like = await likes.toggle(track);
         toast('success', like ? `已红心：${track.name}` : `已取消红心：${track.name}`);
         markPlaylistsStale();
     } catch (error) {
-        if (like) state.likes.delete(id);
-        else state.likes.add(id);
-        afterLikeChange();
         toast('error', error.message);
     }
 }
 
+/** 红心状态变了（这里点的，或胶囊卡片上点的）：重画受影响的地方。 */
 function afterLikeChange() {
+    if (!root || root.hidden) return;
     renderNow();
     if (state.sheet) refreshSheet();
     if (['playlist', 'search', 'queue'].includes(view().view)) {
@@ -1089,30 +1081,12 @@ async function loadHome() {
     if (loggedIn()) {
         h.dailyError = '';
         jobs.push(api('home/daily').then((d) => { h.daily = d.tracks; }, (e) => { if (!h.daily) h.dailyError = e.message; }));
-        jobs.push(loadLikes());
+        jobs.push(likes.load(true));
         if (!state.playlists) jobs.push(loadPlaylists({ quiet: true }));
     }
     // 每一块拿到就画，不等最慢的那个
     for (const job of jobs) job.then(() => { if (view().view === 'home' && !root.hidden) renderBody(); });
     await Promise.allSettled(jobs);
-}
-
-async function loadLikes() {
-    if (state.likesLoading) return;
-    state.likesLoading = true;
-    try {
-        const data = await api('likes');
-        state.likes = new Set(data.ids);
-        if (['playlist', 'search'].includes(view().view)) {
-            const scroll = body.scrollTop;
-            renderBody();
-            body.scrollTop = scroll;
-        }
-        renderNow();
-    } catch {
-        // 红心状态取不到不影响播放
-    }
-    state.likesLoading = false;
 }
 
 async function doSearch(more = false) {
@@ -1507,7 +1481,7 @@ function onClick(e) {
                 state.account = null;
                 state.playlists = null;
                 state.playlist = null;
-                state.likes = null;
+                likes.reset();
                 state.home = { ...state.home, daily: null, dailyError: '', loadedAt: 0 };
                 state.stack = [{ view: 'home' }, { view: 'settings' }];
                 refreshAccount();

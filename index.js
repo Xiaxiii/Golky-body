@@ -442,35 +442,43 @@ box-sizing:border-box;padding:4px 4px 4px 5px;transition:opacity .2s ease}
 #nep-float .nep-sub{font-size:11.5px;color:var(--nep-ink-2)}
 #nep-float .nep-play{width:34px;height:34px;font-size:14px}
 
-#nep-float .nep-mid{position:absolute;z-index:1;left:0;top:0;width:var(--nep-mid-w,340px);height:var(--nep-mid-h,164px);
-box-sizing:border-box;padding:16px 16px 8px;opacity:0;transform:scale(.92);transform-origin:50% 0;pointer-events:none;
-transition:opacity .18s ease,transform .45s var(--nep-spring);white-space:nowrap}
-#nep-float[data-state=mid] .nep-mid{opacity:1;transform:none;pointer-events:auto;transition-delay:.06s}
-.nep-mid-head{display:flex;align-items:center;gap:12px}
-.nep-mid-head .nep-art{width:52px;height:52px;border-radius:13px;font-size:19px;cursor:pointer}
-.nep-mid-text{flex:1;min-width:0;cursor:pointer;outline:0;border-radius:8px}
-.nep-mid-title,.nep-mid-sub{overflow:hidden;text-overflow:ellipsis}
-.nep-mid-title{font-size:16px;font-weight:600;line-height:1.3}
-.nep-mid-sub{margin-top:2px;font-size:13px;color:var(--nep-ink-2)}
-.nep-wave{display:flex;align-items:center;gap:2px;height:14px;align-self:flex-start;margin-top:6px}
-.nep-wave i{width:3px;height:14px;border-radius:2px;background:var(--nep-accent);transform:scaleY(.35);
+/* 中间态：仿灵动岛展开后的音乐卡片，始终纯黑，不跟玻璃颜色走 */
+#nep-float .nep-mid{position:absolute;z-index:1;inset:0;border-radius:inherit;background:#000;color:#fff;opacity:0;pointer-events:none;
+transition:opacity .22s ease}
+#nep-float[data-state=mid] .nep-mid{opacity:1;pointer-events:auto}
+.nep-mid-inner{position:absolute;left:0;top:0;width:var(--nep-mid-w,384px);height:var(--nep-mid-h,236px);box-sizing:border-box;
+padding:14px 22px 12px;display:flex;flex-direction:column;white-space:nowrap;transform:scale(.94);transform-origin:50% 0;
+transition:transform .45s var(--nep-spring)}
+#nep-float[data-state=mid] .nep-mid-inner{transform:none}
+.nep-mid-top{display:flex;align-items:center;justify-content:space-between;height:24px}
+.nep-mid-top .nep-art{width:24px;height:24px;border-radius:6px}
+.nep-wave{display:flex;align-items:center;gap:2px;height:14px;margin-left:auto}
+.nep-wave i{width:3px;height:14px;border-radius:2px;background:var(--nep-art-tint,#ff6b81);transform:scaleY(.35);
 animation:nep-wave .9s ease-in-out infinite alternate;animation-play-state:paused}
 .nep-wave i:nth-child(2){animation-duration:.62s;animation-delay:-.2s}
 .nep-wave i:nth-child(3){animation-duration:.78s;animation-delay:-.45s}
 .nep-wave i:nth-child(4){animation-duration:.55s;animation-delay:-.1s}
 @keyframes nep-wave{to{transform:scaleY(1)}}
 #nep-float[data-playing][data-state=mid] .nep-wave i{animation-play-state:running}
-.nep-mid-progress{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:11px;font-weight:600;color:var(--nep-ink-2);
-font-variant-numeric:tabular-nums}
-.nep-mid-progress span{width:32px}
-.nep-mid-progress span:last-child{text-align:right}
-.nep-mid-track{flex:1;height:5px;border-radius:3px;background:var(--nep-raise-3);overflow:hidden}
-.nep-mid-track i{display:block;height:100%;background:var(--nep-ink);transform-origin:0 50%;transform:scaleX(0);transition:transform .9s linear}
-.nep-mid-controls{display:flex;align-items:center;justify-content:space-between;margin-top:4px}
-#nep-float .nep-mid-controls button{width:46px;height:46px;font-size:20px}
-#nep-float .nep-mid-controls .nep-mid-play{width:54px;height:54px;font-size:26px}
-#nep-float .nep-mid-controls .nep-mid-side{font-size:16px;color:var(--nep-ink-2)}
-#nep-float[data-silent] .nep-mid-silent{color:var(--nep-accent)}
+.nep-mid-head{display:flex;align-items:center;gap:16px;margin-top:10px}
+.nep-mid-head .nep-art{width:60px;height:60px;border-radius:12px;cursor:pointer}
+.nep-mid-text{flex:1;min-width:0;cursor:pointer;outline:0;border-radius:8px}
+.nep-mid-title,.nep-mid-sub{overflow:hidden;text-overflow:ellipsis}
+.nep-mid-title{font-size:17px;font-weight:600;line-height:1.3;color:#fff}
+.nep-mid-sub{margin-top:3px;font-size:15px;color:rgba(235,235,245,.6)}
+.nep-mid-track{height:4px;margin-top:18px;border-radius:2px;background:rgba(255,255,255,.22);overflow:hidden}
+.nep-mid-track i{display:block;height:100%;border-radius:2px;background:#fff;transform-origin:0 50%;transform:scaleX(0);transition:transform .9s linear}
+.nep-mid-times{display:flex;justify-content:space-between;margin-top:7px;font-size:12px;color:rgba(235,235,245,.6);font-variant-numeric:tabular-nums}
+.nep-mid-controls{display:flex;align-items:center;justify-content:space-between;margin:auto -8px 0}
+#nep-float .nep-mid-controls button{width:50px;height:50px;font-size:22px;color:#fff}
+#nep-float .nep-mid-controls button:active{background:rgba(255,255,255,.14)}
+#nep-float .nep-mid-controls .nep-mid-play{width:58px;height:58px;font-size:32px}
+#nep-float .nep-mid-controls .nep-mid-full{font-size:19px}
+#nep-float .nep-mid-like{font-size:23px}
+#nep-float .nep-mid-like.nep-on{color:#ff453a}
+.nep-mid-like:not(.nep-on) i{color:transparent;-webkit-text-stroke:1.8px #fff}
+#nep-float [data-nep-tone=gen]{color:#ff9f0a!important}
+#nep-float [data-nep-tone=done]{color:#30d158!important}
 
 #nep-bar{position:relative;display:flex;align-items:center;gap:6px;width:100%;box-sizing:border-box;margin:0 0 4px;
 padding:3px 4px 3px 5px;border-radius:22px;font-size:14px;white-space:nowrap}
@@ -495,7 +503,7 @@ const FLOAT_DEFAULT_POS = { x: 0.5, y: null };
 const ART = '<span class="nep-art"><img alt=""></span>';
 const WAVE = '<span class="nep-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
 // 中间态（播放卡片）的大小：固定，内容不在形变动画里重排
-const midSize = () => ({ w: Math.round(Math.min(340, window.innerWidth - FLOAT_MARGIN * 2)), h: 164 });
+const midSize = () => ({ w: Math.round(Math.min(384, window.innerWidth - 24)), h: 236 });
 
 const fmtTime = (sec) => {
     if (!Number.isFinite(sec) || sec < 0) return '0:00';
@@ -601,22 +609,22 @@ function createFloat() {
             </div>
             <button type="button" class="nep-play" aria-label="播放/暂停"><i class="nep-glyph fa-solid fa-play"></i></button>
         </div>
-        <div class="nep-mid" aria-hidden="true">
+        <div class="nep-mid" aria-hidden="true"><div class="nep-mid-inner">
+            <div class="nep-mid-top">${ART}${WAVE}</div>
             <div class="nep-mid-head">${ART}
                 <div class="nep-mid-text" role="button" tabindex="-1" aria-label="打开完整播放器">
                     <div class="nep-mid-title"></div><div class="nep-mid-sub"></div></div>
-                ${WAVE}
             </div>
-            <div class="nep-mid-progress"><span class="nep-mid-cur">0:00</span>
-                <div class="nep-mid-track"><i></i></div><span class="nep-mid-dur">0:00</span></div>
+            <div class="nep-mid-track"><i></i></div>
+            <div class="nep-mid-times"><span class="nep-mid-cur">0:00</span><span class="nep-mid-dur">0:00</span></div>
             <div class="nep-mid-controls">
-                <button type="button" class="nep-mid-side nep-mid-full" tabindex="-1" aria-label="打开完整播放器"><i class="fa-solid fa-list-ul"></i></button>
+                <button type="button" class="nep-mid-full" tabindex="-1" aria-label="打开完整播放器"><i class="fa-solid fa-bars-staggered"></i></button>
                 <button type="button" class="nep-mid-prev" tabindex="-1" aria-label="上一首"><i class="fa-solid fa-backward"></i></button>
                 <button type="button" class="nep-mid-play" tabindex="-1" aria-label="播放/暂停"><i class="nep-glyph fa-solid fa-play"></i></button>
                 <button type="button" class="nep-mid-next" tabindex="-1" aria-label="下一首"><i class="fa-solid fa-forward"></i></button>
-                <button type="button" class="nep-mid-side nep-mid-silent" tabindex="-1" aria-label="静音播放"><i class="fa-solid fa-volume-xmark"></i></button>
+                <button type="button" class="nep-mid-like" tabindex="-1" aria-label="红心"><i class="fa-solid fa-heart"></i></button>
             </div>
-        </div>`;
+        </div></div>`;
     document.body.appendChild(el);
     const on = (sel, fn) => el.querySelector(sel).addEventListener('click', fn);
     on('.nep-play', withEngine(e => e.toggle()));
@@ -624,11 +632,7 @@ function createFloat() {
     on('.nep-mid-play', withEngine(e => e.toggle()));
     on('.nep-mid-prev', withEngine(e => e.prev()));
     on('.nep-mid-next', withEngine(e => e.next()));
-    on('.nep-mid-silent', withEngine((e) => {
-        if (e.isSilentMode()) e.stopSilent();
-        else e.startSilent();
-        miniBar.render();
-    }));
+    on('.nep-mid-like', () => toggleCurrentLike());
     for (const sel of ['.nep-mid-full', '.nep-mid-text', '.nep-mid-head .nep-art']) on(sel, () => openPanel());
     el.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
@@ -784,6 +788,7 @@ function renderMidProgress() {
     const cur = s && !silent ? s.currentTime : 0;
     el.querySelector('.nep-mid-cur').textContent = fmtTime(cur);
     el.querySelector('.nep-mid-dur').textContent = dur ? fmtTime(dur) : '–:––';
+    if (s && !silent && s.track && !likes.ids) likes.load();
     el.querySelector('.nep-mid-track i').style.transform = `scaleX(${dur ? Math.min(1, cur / dur) : 0})`;
 }
 
@@ -863,6 +868,132 @@ const setTone = (node, tone) => {
     else delete node.dataset.nepTone;
 };
 
+// ---------- 红心：胶囊卡片和完整面板共用一份 ----------
+
+export const likes = {
+    ids: null, // Set<number>；没登录或还没取到时为 null
+    loading: null,
+    listeners: new Set(),
+
+    has(id) {
+        return !!this.ids?.has(Number(id));
+    },
+
+    failedAt: 0,
+
+    /** 取红心列表；没登录时静默失败，5 分钟内不再自动重试。 */
+    load(force = false) {
+        if (this.loading) return this.loading;
+        if (!force && (this.ids || Date.now() - this.failedAt < 5 * 60 * 1000)) return Promise.resolve();
+        this.loading = api('likes')
+            .then((data) => {
+                this.ids = new Set((data.ids || []).map(Number));
+                this.failedAt = 0;
+                this.notify();
+            })
+            .catch(() => {
+                this.failedAt = Date.now();
+            })
+            .finally(() => {
+                this.loading = null;
+            });
+        return this.loading;
+    },
+
+    /** 红心 / 取消红心，先改界面，失败再改回来并抛出错误。 */
+    async toggle(track) {
+        const id = Number(track.id);
+        const like = !this.has(id);
+        this.ids ??= new Set();
+        if (like) this.ids.add(id);
+        else this.ids.delete(id);
+        this.notify();
+        try {
+            await api('like', { id, like });
+        } catch (error) {
+            if (like) this.ids.delete(id);
+            else this.ids.add(id);
+            this.notify();
+            throw error;
+        }
+        return like;
+    },
+
+    reset() {
+        this.ids = null;
+        this.failedAt = 0;
+        this.notify();
+    },
+
+    notify() {
+        for (const fn of this.listeners) {
+            try {
+                fn();
+            } catch (error) {
+                console.error('[netease-player]', error);
+            }
+        }
+    },
+};
+
+async function toggleCurrentLike() {
+    const id = miniBar.id;
+    if (id == null) return;
+    try {
+        const like = await likes.toggle({ id });
+        globalThis.toastr?.success(`${like ? '已红心' : '已取消红心'}：${miniBar.title}`, '', { timeOut: 1500 });
+    } catch (error) {
+        const text = error.needLogin ? '先在播放器的「账号与设置」里扫码登录网易云' : error.message;
+        globalThis.toastr?.warning(text, '', { timeOut: 3000 });
+    }
+}
+
+// 声波用封面的颜色：网易云的封面允许跨域读取时取最鲜艳的一块，读不到就用默认色
+let tintPic = '';
+function updateArtTint(el, pic) {
+    if (!pic || pic === tintPic || el.dataset.state !== 'mid') return;
+    tintPic = pic;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+        try {
+            const c = document.createElement('canvas');
+            c.width = c.height = 12;
+            const g = c.getContext('2d', { willReadFrequently: true });
+            g.drawImage(img, 0, 0, 12, 12);
+            const d = g.getImageData(0, 0, 12, 12).data;
+            let best = null;
+            for (let i = 0; i < d.length; i += 4) {
+                const [h, sat, l] = rgbToHsl(d[i], d[i + 1], d[i + 2]);
+                const score = sat * (1 - Math.abs(l - 0.55) * 1.4);
+                if (!best || score > best.score) best = { h, sat, score };
+            }
+            const hue = Math.round(best.h * 360);
+            const s = Math.round(Math.max(0.55, best.sat) * 100);
+            el.style.setProperty('--nep-art-tint', best.sat < 0.12 ? '#fff' : `hsl(${hue} ${s}% 68%)`);
+        } catch {
+            el.style.removeProperty('--nep-art-tint');
+        }
+    };
+    img.onerror = () => el.style.removeProperty('--nep-art-tint');
+    img.src = `${pic}?param=24y24`;
+}
+
+function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    if (max === min) return [0, 0, l];
+    const d = max - min;
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    let h;
+    if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    return [h / 6, s, l];
+}
+
 /**
  * 迷你播放条和悬浮胶囊共用一份状态（engine.js 只调 set/show/hide）。
  * - entry=float：显示悬浮胶囊
@@ -877,6 +1008,8 @@ export const miniBar = {
     away: false, // 展开面板开着时胶囊让位
     title: '',
     artist: '',
+    album: '',
+    id: null,
     pic: '',
     playing: false,
     needTap: false,
@@ -955,11 +1088,17 @@ export const miniBar = {
         const float = this.float;
         if (float && !float.hidden) {
             float.toggleAttribute('data-playing', !!this.playing);
-            float.toggleAttribute('data-silent', !!engineModule?.isSilentMode());
             const midTitle = float.querySelector('.nep-mid-title');
             if (midTitle.textContent !== title) midTitle.textContent = title;
             const midSub = float.querySelector('.nep-mid-sub');
-            const midText = label || this.note || this.artist || '去完整播放器里挑一个歌单';
+            const byline = [this.artist, this.album].filter(Boolean).join(' / ');
+            const midText = label || this.note || byline || '去完整播放器里挑一个歌单';
+            const like = float.querySelector('.nep-mid-like');
+            const liked = this.id != null && likes.has(this.id);
+            like.classList.toggle('nep-on', liked);
+            like.disabled = this.id == null;
+            like.setAttribute('aria-label', liked ? '取消红心' : '红心');
+            updateArtTint(float, this.pic);
             if (midSub.textContent !== midText) midSub.textContent = midText;
             setTone(midSub, tone);
             // 文字变了宽度会变，重新贴边，免得超出屏幕；刚显示出来时也要摆一次
@@ -1071,6 +1210,7 @@ if (globalThis.__neteasePlayerLoaded) {
     injectStyle();
     applyGlass();
     watchTheme();
+    likes.listeners.add(() => miniBar.render());
     addMenuItem();
     addSettingsDrawer();
     bindGenerationEvents();
