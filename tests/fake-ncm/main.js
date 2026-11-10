@@ -24,6 +24,7 @@ module.exports = {
   toplist_detail: async (q) => { rec('toplist_detail')(q); return { body: { code: 200, list: [{ id: 800, name: '飙升榜', coverImgUrl: '', updateFrequency: '每天更新', tracks: [{ first: 'A', second: '歌手11' }] }, { id: 801, name: '歌手榜', tracks: [] }] } }; },
   likelist: async (q) => { rec('likelist')(q); return { body: { code: 200, ids: [11] } }; },
   like: async (q) => { rec('like')(q); return { body: { code: 200 } }; },
-  playlist_tracks: async (q) => { rec('playlist_tracks')(q); return { body: q.tracks === '11' && q.op === 'add' ? { code: 502, message: '歌单内歌曲重复' } : { code: 200 } }; },
+  // 与真实接口包一致：成功和 502（重复）时把整个请求结果再包一层 { status, body, cookie }；512 以外的失败直接返回 body
+  playlist_tracks: async (q) => { rec('playlist_tracks')(q); if (q.pid === '404') return { status: 200, body: { code: 404, message: '歌单不存在' } }; return { status: 200, body: { status: 200, body: q.tracks === '11' && q.op === 'add' ? { code: 502, message: '歌单内歌曲重复' } : { code: 200, count: 1 }, cookie: [] } }; },
   song_url: async (q) => { rec('song_url')(q); throw { status: 460, body: { code: 460, msg: 'Cheating' } }; },
 };

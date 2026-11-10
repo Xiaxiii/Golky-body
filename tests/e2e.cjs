@@ -61,8 +61,8 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   // 面板是页面栈：首页在底，搜索、设置等页面从顶栏推入
   const nav = (name) => page.click(`#nep-panel .nep-top [data-nav=${name}]`);
   const home = async () => { while (await page.$('#nep-panel .nep-back:not([hidden])')) await page.click('#nep-panel .nep-back'); };
-  await page.waitForSelector('#nep-panel .nep-daily');
-  check(await page.$eval('#nep-panel .nep-daily', el => el.textContent.includes('扫码登录')), '未登录时首页的每日推荐提示扫码登录');
+  await page.waitForSelector('#nep-panel .nep-hero');
+  check(await page.$eval('#nep-panel .nep-hero', el => el.textContent.includes('扫码登录')), '未登录时首页的每日推荐提示扫码登录');
   await page.screenshot({ path: OUT + '/1-panel.png' });
 
   // 搜索并播放
@@ -118,6 +118,10 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   await page.waitForSelector('#nep-panel [data-act=open-top]');
   check(true, '登录后首页显示每日推荐、推荐歌单、排行榜');
   await page.screenshot({ path: OUT + '/3b-home.png' });
+  // 推荐歌单封面上的播放键：不进歌单页，直接开始放
+  await page.click('#nep-panel [data-act=play-rec]');
+  await page.waitForFunction(() => { const a = document.getElementById('nep-audio'); return a.src.includes('song11') && !a.paused; }, null, { timeout: 10000 });
+  check(await page.$eval('#nep-panel .nep-top', el => el.dataset.view === 'home'), '推荐歌单的播放键直接开始播放，停留在首页');
 
   // 歌单 -> 播放全部（11,12 正常，13 返回 460）
   await page.click('#nep-panel [data-act=open-playlist]');
@@ -151,8 +155,33 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   await page.click('#nep-panel .nep-next');
   await page.waitForFunction(() => document.getElementById('nep-audio').src.includes('song12'), null, { timeout: 10000 });
   check(true, '下一首');
+  // 换歌：底部常驻条左滑切下一首，滑完不会顺带打开「正在播放」
+  await page.click('#nep-panel .nep-nowbar .nep-toggle');
+  await sleep(300);
+  const srcBeforeSwipe = await page.evaluate(() => document.getElementById('nep-audio').src);
+  const nb = await page.$eval('#nep-panel .nep-nowbar-text', el => { const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
+  await page.mouse.move(nb.x, nb.y);
+  await page.mouse.down();
+  for (let k = 1; k <= 8; k++) await page.mouse.move(nb.x - 14 * k, nb.y + k);
+  await page.mouse.up();
+  await page.waitForFunction((s) => { const a = document.getElementById('nep-audio'); return a.src !== s && a.src.includes('/song') && !a.paused; }, srcBeforeSwipe, { timeout: 10000 });
+  const titleAfterSwipe = await page.$eval('#nep-panel .nep-top h1', el => el.textContent);
+  check(titleAfterSwipe !== '正在播放', `底部条左滑切到下一首，没有误开「正在播放」（${titleAfterSwipe}）`);
+  // 换歌：「正在播放」里直接列出接下来播放的歌，点一下就换
+  await page.click('#nep-panel [data-act=play-all]');
+  await page.waitForFunction(() => document.getElementById('nep-audio').src.includes('song11'), null, { timeout: 10000 });
+  await page.click('#nep-panel .nep-nowbar .nep-toggle');
+  await page.click('#nep-panel .nep-nowbar .nep-nowbar-text');
+  await page.waitForSelector('#nep-panel .nep-upnext .nep-row[data-i="1"]');
+  check(await page.$eval('#nep-panel .nep-upnext-head', el => el.textContent.includes('全部 3 首')), '「正在播放」下面列出接下来播放的歌和队列总数');
+  await page.click('#nep-panel .nep-upnext .nep-row[data-i="1"] .nep-row-main');
+  await page.waitForFunction(() => { const a = document.getElementById('nep-audio'); return a.src.includes('song12') && !a.paused; }, null, { timeout: 10000 });
+  check(true, '在「接下来播放」里点一首，立即换成这首');
+  await page.screenshot({ path: OUT + '/4b-now.png' });
   await sleep(1200);
-  await page.click('#nep-panel .nep-nowbar [data-nav=queue]');
+  await page.click('#nep-panel .nep-upnext-head [data-nav=queue]');
+  await page.waitForSelector('#nep-panel .nep-row.nep-current');
+  check(await page.$eval('#nep-panel .nep-top h1', el => el.textContent === '播放队列'), '「全部 N 首」进入播放队列，正在播放的一行高亮');
   await page.screenshot({ path: OUT + '/5-queue.png' });
   await nav('settings');
   await page.screenshot({ path: OUT + '/6-settings.png', fullPage: false });
@@ -215,6 +244,11 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   await page.tap('#nep-float .nep-play');
   await sleep(500);
   check(await page.evaluate(() => !document.getElementById('nep-audio').paused), '触摸点播放键继续');
+  // 胶囊上的下一首：不用展开就能切歌
+  const srcBeforeNext = await page.evaluate(() => document.getElementById('nep-audio').src);
+  await page.tap('#nep-float .nep-next');
+  await page.waitForFunction((s) => { const a = document.getElementById('nep-audio'); return a.src !== s && a.src.includes('/song') && !a.paused; }, srcBeforeNext, { timeout: 10000 });
+  check(!(await panelOpen()) && await page.$eval('#nep-float', el => el.dataset.state === 'compact'), '胶囊上的下一首键直接切歌，不展开');
   // 轻点胶囊：原地展开成播放卡片（中间态），不打开完整面板
   await page.tap('#nep-float .nep-info');
   await page.waitForSelector('#nep-float[data-state=mid]');
@@ -228,27 +262,33 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   await page.tap('#nep-float .nep-mid-play');
   await sleep(500);
   check(await page.evaluate(() => !document.getElementById('nep-audio').paused), '播放卡片的播放键继续');
+  // 当前这首可能本来就红过心：点一下应翻转，再点一下翻回来
+  const liked0 = await page.$eval('#nep-float .nep-mid-like', el => el.classList.contains('nep-on'));
   await page.tap('#nep-float .nep-mid-like');
-  await page.waitForFunction(() => document.querySelector('#nep-float .nep-mid-like.nep-on'), null, { timeout: 5000 });
+  await page.waitForFunction((v) => document.querySelector('#nep-float .nep-mid-like').classList.contains('nep-on') !== v, liked0, { timeout: 5000 });
   await page.tap('#nep-float .nep-mid-like');
-  await page.waitForFunction(() => document.querySelector('#nep-float .nep-mid-like:not(.nep-on)'), null, { timeout: 5000 });
+  await page.waitForFunction((v) => document.querySelector('#nep-float .nep-mid-like').classList.contains('nep-on') === v, liked0, { timeout: 5000 });
   check(true, '播放卡片上红心、取消红心');
   await page.mouse.click(10, 800);
   await sleep(700);
   const rc = await rectOf();
-  check(await page.$eval('#nep-float', el => el.dataset.state) === 'compact' && Math.abs(rc.w - r2.w) < 2 && Math.abs(rc.x - r2.x) < 2 && Math.abs(rc.y - r2.y) < 2, `点卡片外面收回胶囊，回到原位 ${JSON.stringify(rc)}`);
+  // 中途切过歌，胶囊宽度可能变了：按保存的比例位置和当前宽度算应在的 x
+  const savedPos2 = await page.evaluate(() => JSON.parse(localStorage.getItem('nep:v1:float-pos')));
+  const expX = 6 + savedPos2.x * Math.max(0, 390 - rc.w - 12);
+  check(await page.$eval('#nep-float', el => el.dataset.state === 'compact' && !el.classList.contains('nep-card') && !el.style.clipPath) && Math.abs(rc.x - expX) < 2 && Math.abs(rc.y - r2.y) < 2 && Math.abs(rc.h - r2.h) < 2, `点卡片外面收回胶囊，回到原位 ${JSON.stringify(rc)}`);
   // 卡片上的列表键打开完整面板
   await page.tap('#nep-float .nep-info');
   await page.waitForSelector('#nep-float[data-state=mid]');
   await page.tap('#nep-float .nep-mid-full');
   await page.waitForSelector('#nep-panel:not([hidden])');
   check(await page.$eval('#nep-float', el => el.classList.contains('nep-away') && el.dataset.state === 'compact'), '播放卡片点列表键打开完整面板，面板开着时胶囊让位');
+  check(await page.$eval('#nep-panel .nep-top h1', el => el.textContent === '正在播放') && !!(await page.$('#nep-panel .nep-upnext')), '播放卡片的列表键直接进「正在播放」，下面是接下来播放');
   await page.screenshot({ path: OUT + '/8b-float-panel.png' });
 
   // ---------- 歌单刷新 ----------
   // 打开面板时已经后台检查过一次歌单（已登录），回到首页直接有数据
   await home();
-  await page.waitForFunction(() => document.querySelector('#nep-panel .nep-row[data-act=open-playlist] .nep-row-sub')?.textContent.startsWith('3 首'), null, { timeout: 5000 });
+  await page.waitForFunction(() => document.querySelector('#nep-panel [data-act=open-playlist] .nep-mine-sub')?.textContent.startsWith('3 首'), null, { timeout: 5000 });
   check(true, '歌单列表 3 首');
   setPlaylistVersion(2); // 在网易云 App 里加了一首
   const cached = await page.evaluate(async () => {
@@ -257,7 +297,7 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   });
   check(cached === 3, `不带 fresh 时走插件缓存，仍是 ${cached} 首`);
   await page.click('#nep-panel [data-act=refresh-playlists]');
-  await page.waitForFunction(() => document.querySelector('#nep-panel .nep-row[data-act=open-playlist] .nep-row-sub')?.textContent.startsWith('4 首'), null, { timeout: 5000 });
+  await page.waitForFunction(() => document.querySelector('#nep-panel [data-act=open-playlist] .nep-mine-sub')?.textContent.startsWith('4 首'), null, { timeout: 5000 });
   check(true, '点「刷新」跳过缓存，歌单列表变成 4 首');
   await page.click('#nep-panel [data-act=open-playlist]');
   await page.waitForFunction(() => document.querySelectorAll('#nep-panel .nep-row').length === 4, null, { timeout: 5000 });
@@ -274,8 +314,13 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   const writeApi = (path, body) => page.evaluate(async ([path, body]) => (await (await fetch('/api/plugins/netease-player/' + path, { method: 'POST', headers: SillyTavern.getContext().getRequestHeaders(), body: JSON.stringify(body) })).json()), [path, body]);
   const dup = await writeApi('playlist/add', { pid: 500, ids: [11] });
   check(!dup.ok && dup.error === '歌单里已经有这首歌', `重复收藏给出明确提示: ${JSON.stringify(dup)}`);
+  // 替身按真实接口包返回多包一层的结果，0.5.x 的服务端会把它误判为失败
   const added = await writeApi('playlist/add', { pid: 500, ids: [12] });
   check(added.ok && added.count === 1, `收藏到歌单: ${JSON.stringify(added)}`);
+  const removed = await writeApi('playlist/remove', { pid: 500, ids: [12] });
+  check(removed.ok && removed.count === 1, `从歌单删除: ${JSON.stringify(removed)}`);
+  const missing = await writeApi('playlist/add', { pid: 404, ids: [12] });
+  check(!missing.ok && missing.error === '歌单不存在', `真实的失败照常报错: ${JSON.stringify(missing)}`);
   setPlaylistVersion(3);
   await page.click('#nep-panel [data-act=refresh-playlist]');
   await page.waitForFunction(() => document.querySelectorAll('#nep-panel .nep-row').length === 5 && document.querySelector('#nep-panel .nep-pl-meta')?.textContent.startsWith('5 首'), null, { timeout: 5000 });
@@ -287,9 +332,9 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   await sleep(300);
   check(!(await panelOpen()) && !(await page.$eval('#nep-float', el => el.classList.contains('nep-away'))), '收起面板后悬浮胶囊回来');
   await sleep(10500);
-  await page.click('#nep-float .nep-info');
-  await page.waitForSelector('#nep-float[data-state=mid]');
-  await page.click('#nep-float .nep-mid-full');
+  // 从魔法棒菜单重新打开：回到收起前的歌单页（沿用原来的 DOM），并自动检查更新
+  await page.click('#extensionsMenuButton');
+  await page.click('#nep-menu-item');
   await page.waitForFunction(() => document.querySelectorAll('#nep-panel .nep-row').length === 4 && document.querySelector('#nep-panel .nep-pl-meta')?.textContent.startsWith('4 首'), null, { timeout: 5000 });
   check(true, '打开面板时自动检查到歌单变化并重新加载（5 → 4 首）');
 
@@ -324,7 +369,7 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   await page.click('#nep-menu-item');
   await page.waitForSelector('#nep-panel:not([hidden])');
   check(await page.evaluate(() => !!document.querySelector('#nep-float:not([hidden])')), '从魔法棒菜单重新打开播放器后悬浮胶囊恢复');
-  await page.waitForFunction(() => document.querySelector('#nep-panel .nep-row[data-act=open-playlist] .nep-row-sub')?.textContent.startsWith('500 首'), null, { timeout: 5000 });
+  await page.waitForFunction(() => document.querySelector('#nep-panel [data-act=open-playlist] .nep-mine-sub')?.textContent.startsWith('500 首'), null, { timeout: 5000 });
   await page.click('#nep-panel [data-act=open-playlist]');
   await page.waitForFunction(() => document.querySelectorAll('#nep-panel .nep-row').length > 0 && !document.querySelector('#nep-panel .nep-list-foot').textContent.includes('加载中'), null, { timeout: 5000 });
   const firstRows = await page.$$eval('#nep-panel .nep-row', e => e.length);
