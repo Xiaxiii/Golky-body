@@ -5,3 +5,6 @@ data/
 cookie-*.json
 # 端到端测试的截图（可能拍到二维码和昵称）
 tests/*.png
+# 设计技能 ui-ux-pro-max 自带的检索数据，不是运行数据
+!.claude/skills/ui-ux-pro-max/data/
+__pycache__/
