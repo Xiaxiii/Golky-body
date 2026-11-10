@@ -363,7 +363,14 @@ export async function init(router) {
         cacheClearPrefix(`${user}:likes`);
     };
 
-    const checkWrite = (result, fallback) => {
+    // 接口包的 playlist_tracks 在成功（以及 502 重复）时把整个请求结果再包一层：
+    // { status, body: { code, ... }, cookie }。按外层取 code 会取不到，误判为失败。
+    const unwrap = (result) => (result && result.code == null && result.body && typeof result.body === 'object' && result.body.code != null
+        ? result.body
+        : result);
+
+    const checkWrite = (raw, fallback) => {
+        const result = unwrap(raw);
         const code = Number(result?.code) || 0;
         if (code === 200) return;
         if (code === 301) throw needLogin();

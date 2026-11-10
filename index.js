@@ -349,13 +349,14 @@ function reportLoadError(error) {
 
 let panelModule = null;
 
-export async function openPanel() {
+/** 打开完整面板；view 给出时直接进那一页（如 'now'：正在播放和接下来播放）。 */
+export async function openPanel(view) {
     miniBar.show();
     collapseFloat();
     try {
         const panel = await loadPanel();
         panelModule = panel;
-        panel.open();
+        panel.open(typeof view === 'string' ? view : undefined);
         miniBar.setAway(true);
     } catch (error) {
         reportLoadError(error);
@@ -372,7 +373,7 @@ export async function openPanel() {
 const CSS = `
 #nep-float,#nep-bar,#nep-panel{
 --nep-glass:rgba(250,250,252,.96);--nep-sheen:rgba(255,255,255,.85);--nep-rim:rgba(255,255,255,1);--nep-rim-2:rgba(255,255,255,.35);
---nep-glint:rgba(255,255,255,.8);--nep-depth:rgba(0,0,0,.07);--nep-blur:22px;
+--nep-glint:rgba(255,255,255,.8);--nep-depth:rgba(0,0,0,.07);--nep-blur:16px;
 --nep-ink:#1d1d1f;--nep-ink-2:rgba(60,60,67,.7);--nep-raise:rgba(118,118,128,.12);--nep-raise-2:rgba(118,118,128,.2);
 --nep-raise-3:rgba(118,118,128,.3);--nep-seg:#fff;--nep-paper:#fff;--nep-accent:#d33a31;--nep-on-accent:#fff;
 --nep-tint:#fbe9e7;--nep-tint-2:#f6d3cf;--nep-tint-ink:#8a1f19;--nep-ok:#1d8a3a;--nep-busy:#b35c00;
@@ -401,10 +402,10 @@ inset 0 -14px 24px -18px var(--nep-depth),var(--nep-shadow)}
 @supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
 /* taste-skill-ignore: 用户指定的通透玻璃 */:root[data-nep-glassfx=clear] .nep-glass{-webkit-backdrop-filter:blur(var(--nep-blur)) saturate(1.9);backdrop-filter:blur(var(--nep-blur)) saturate(1.9)}
 :root[data-nep-glassfx=clear] #nep-float,:root[data-nep-glassfx=clear] #nep-bar{--nep-glass:rgba(255,255,255,.52);--nep-sheen:rgba(255,255,255,.6)}
-:root[data-nep-glassfx=clear] #nep-panel{--nep-glass:rgba(246,246,248,.74);--nep-blur:30px}
+:root[data-nep-glassfx=clear] #nep-panel{--nep-glass:rgba(246,246,248,.78);--nep-blur:20px}
 :root[data-nep-glassfx=clear][data-nep-glass=dark] #nep-float,:root[data-nep-glassfx=clear][data-nep-glass=dark] #nep-bar{
 --nep-glass:rgba(40,40,44,.52);--nep-sheen:rgba(255,255,255,.1)}
-:root[data-nep-glassfx=clear][data-nep-glass=dark] #nep-panel{--nep-glass:rgba(30,30,32,.74)}}
+:root[data-nep-glassfx=clear][data-nep-glass=dark] #nep-panel{--nep-glass:rgba(30,30,32,.8)}}
 #nep-bar[hidden],#nep-float[hidden]{display:none!important}
 .nep-art{flex:none;position:relative;display:grid;place-items:center;overflow:hidden;background:var(--nep-raise-2);color:var(--nep-ink-2)}
 /* 没有封面时不占位 */
@@ -419,62 +420,65 @@ background:currentColor;vertical-align:middle}
 
 #nep-float{position:fixed;z-index:2910;left:0;top:0;box-sizing:border-box;border-radius:24px;overflow:hidden;
 font-size:13px;line-height:1.25;white-space:nowrap;will-change:transform;contain:layout style;
-transition:opacity .25s ease,scale .35s var(--nep-spring);
+transition:opacity .2s ease,scale .3s var(--nep-spring),visibility 0s;
 touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
-#nep-float.nep-morph{transition:opacity .25s ease,scale .35s var(--nep-spring),transform .5s var(--nep-spring),
-width .5s var(--nep-spring),height .5s var(--nep-spring),border-radius .5s var(--nep-spring)}
-#nep-float[data-state=compact]:active:not(.nep-dragging){scale:.96}
-#nep-float[data-state=mid]{border-radius:32px;touch-action:manipulation}
-#nep-float.nep-away{opacity:0;pointer-events:none}
+/* 展开、收回：元素直接取卡片大小，只对 clip-path 做弹性过渡，形变期间不重排 */
+#nep-float.nep-morph{transition:opacity .2s ease,scale .3s var(--nep-spring),visibility 0s,clip-path .46s var(--nep-spring)}
+#nep-float[data-state=compact]:active:not(.nep-dragging,.nep-card){scale:.96}
+/* 卡片是纯黑的，背后的模糊看不见：关掉背景模糊和玻璃描边，形变时每帧只画一块黑底 */
+#nep-float.nep-card{border-radius:32px;touch-action:manipulation;background:#000;box-shadow:none;
+-webkit-backdrop-filter:none;backdrop-filter:none}
+#nep-float.nep-card::before{display:none}
+#nep-float.nep-away{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility 0s .2s}
 #nep-float.nep-dragging{scale:1.04}
 #nep-float button{flex:none;border:0;border-radius:50%;padding:0;background:transparent;color:inherit;cursor:pointer;
-display:grid;place-items:center;-webkit-tap-highlight-color:transparent}
-#nep-float button:active{background:var(--nep-raise-2)}
+display:grid;place-items:center;-webkit-tap-highlight-color:transparent;transition:background-color .15s ease,scale .15s ease}
+#nep-float button:active{background:var(--nep-raise-2);scale:.92}
 #nep-float :is(button,[role=button]):focus-visible{outline:2px solid var(--nep-accent);outline-offset:1px}
-.nep-compact{position:relative;z-index:1;display:flex;align-items:center;gap:8px;width:max-content;max-width:min(230px,66vw);
-box-sizing:border-box;padding:4px 4px 4px 5px;transition:opacity .2s ease}
-#nep-float[data-state=mid] .nep-compact{opacity:0;pointer-events:none}
-#nep-float .nep-info{display:flex;align-items:center;gap:8px;min-width:0;cursor:pointer;outline:0;border-radius:17px}
+.nep-compact{position:relative;z-index:1;display:flex;align-items:center;gap:6px;width:max-content;max-width:min(268px,74vw);
+box-sizing:border-box;padding:4px 3px 4px 5px;transition:opacity .2s ease}
+#nep-float.nep-card .nep-compact{opacity:0;pointer-events:none;transition-duration:.1s}
+#nep-float .nep-info{display:flex;align-items:center;gap:8px;min-width:0;margin-right:2px;cursor:pointer;outline:0;border-radius:17px}
 #nep-float .nep-compact .nep-art{width:30px;height:30px;border-radius:50%;font-size:12px}
 #nep-float .nep-text{min-width:0;max-width:10.5em}
 #nep-float .nep-title,#nep-float .nep-sub{overflow:hidden;text-overflow:ellipsis}
 #nep-float .nep-title{font-weight:600}
 #nep-float .nep-sub{font-size:11.5px;color:var(--nep-ink-2)}
-#nep-float .nep-play{width:34px;height:34px;font-size:14px}
+#nep-float .nep-play{width:32px;height:32px;font-size:14px}
+#nep-float .nep-next{width:30px;height:32px;font-size:13px;color:var(--nep-ink-2)}
 
 /* 中间态：仿灵动岛展开后的音乐卡片，始终纯黑，不跟玻璃颜色走 */
 #nep-float .nep-mid{position:absolute;z-index:1;inset:0;border-radius:inherit;background:#000;color:#fff;opacity:0;pointer-events:none;
-transition:opacity .22s ease}
-#nep-float[data-state=mid] .nep-mid{opacity:1;pointer-events:auto}
-.nep-mid-inner{position:absolute;left:0;top:0;width:var(--nep-mid-w,384px);height:var(--nep-mid-h,236px);box-sizing:border-box;
-padding:14px 22px 12px;display:flex;flex-direction:column;white-space:nowrap;transform:scale(.94);transform-origin:50% 0;
-transition:transform .45s var(--nep-spring)}
-#nep-float[data-state=mid] .nep-mid-inner{transform:none}
-.nep-mid-top{display:flex;align-items:center;justify-content:space-between;height:24px}
-.nep-mid-top .nep-art{width:24px;height:24px;border-radius:6px}
-.nep-wave{display:flex;align-items:center;gap:2px;height:14px;margin-left:auto}
-.nep-wave i{width:3px;height:14px;border-radius:2px;background:var(--nep-art-tint,#ff6b81);transform:scaleY(.35);
+transition:opacity .2s ease}
+#nep-float.nep-card .nep-mid{opacity:1;transition-duration:0s}
+#nep-float[data-state=mid] .nep-mid{pointer-events:auto}
+.nep-mid-inner{position:absolute;left:0;top:0;width:var(--nep-mid-w,384px);height:var(--nep-mid-h,200px);box-sizing:border-box;
+padding:18px 20px 10px;display:flex;flex-direction:column;white-space:nowrap;opacity:0;transform:scale(.96);transform-origin:50% 0;
+transition:opacity .12s ease,transform .4s var(--nep-spring)}
+#nep-float[data-state=mid] .nep-mid-inner{opacity:1;transform:none;transition:opacity .22s ease .05s,transform .46s var(--nep-spring)}
+.nep-wave{display:flex;align-items:center;gap:2px;flex:none;height:16px;align-self:flex-start;margin-top:4px}
+.nep-wave i{width:3px;height:16px;border-radius:2px;background:var(--nep-art-tint,#ff6b81);transform:scaleY(.3);
 animation:nep-wave .9s ease-in-out infinite alternate;animation-play-state:paused}
 .nep-wave i:nth-child(2){animation-duration:.62s;animation-delay:-.2s}
 .nep-wave i:nth-child(3){animation-duration:.78s;animation-delay:-.45s}
 .nep-wave i:nth-child(4){animation-duration:.55s;animation-delay:-.1s}
 @keyframes nep-wave{to{transform:scaleY(1)}}
 #nep-float[data-playing][data-state=mid] .nep-wave i{animation-play-state:running}
-.nep-mid-head{display:flex;align-items:center;gap:16px;margin-top:10px}
-.nep-mid-head .nep-art{width:60px;height:60px;border-radius:12px;cursor:pointer}
+.nep-mid-head{display:flex;align-items:center;gap:14px}
+.nep-mid-head .nep-art{width:56px;height:56px;border-radius:12px;cursor:pointer}
 .nep-mid-text{flex:1;min-width:0;cursor:pointer;outline:0;border-radius:8px}
 .nep-mid-title,.nep-mid-sub{overflow:hidden;text-overflow:ellipsis}
 .nep-mid-title{font-size:17px;font-weight:600;line-height:1.3;color:#fff}
-.nep-mid-sub{margin-top:3px;font-size:15px;color:rgba(235,235,245,.6)}
-.nep-mid-track{height:4px;margin-top:18px;border-radius:2px;background:rgba(255,255,255,.22);overflow:hidden}
+.nep-mid-sub{margin-top:2px;font-size:14px;color:rgba(235,235,245,.6)}
+.nep-mid-track{height:4px;margin-top:16px;border-radius:2px;background:rgba(255,255,255,.22);overflow:hidden}
 .nep-mid-track i{display:block;height:100%;border-radius:2px;background:#fff;transform-origin:0 50%;transform:scaleX(0);transition:transform .9s linear}
-.nep-mid-times{display:flex;justify-content:space-between;margin-top:7px;font-size:12px;color:rgba(235,235,245,.6);font-variant-numeric:tabular-nums}
+.nep-mid-times{display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:rgba(235,235,245,.6);font-variant-numeric:tabular-nums}
 .nep-mid-controls{display:flex;align-items:center;justify-content:space-between;margin:auto -8px 0}
 #nep-float .nep-mid-controls button{width:50px;height:50px;font-size:22px;color:#fff}
 #nep-float .nep-mid-controls button:active{background:rgba(255,255,255,.14)}
-#nep-float .nep-mid-controls .nep-mid-play{width:58px;height:58px;font-size:32px}
+#nep-float .nep-mid-controls .nep-mid-play{width:58px;height:58px;font-size:30px}
 #nep-float .nep-mid-controls .nep-mid-full{font-size:19px}
-#nep-float .nep-mid-like{font-size:23px}
+#nep-float .nep-mid-like{font-size:22px}
 #nep-float .nep-mid-like.nep-on{color:#ff453a}
 .nep-mid-like:not(.nep-on) i{color:transparent;-webkit-text-stroke:1.8px #fff}
 #nep-float [data-nep-tone=gen]{color:#ff9f0a!important}
@@ -494,7 +498,7 @@ font-size:15px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 #nep-bar .nep-resume{width:auto;padding:0 14px;border-radius:18px;background:var(--nep-raise-2);font:600 13px/1 inherit}
 @media (prefers-reduced-motion:reduce){
 [data-nep-tone=gen]::before,.nep-wave i{animation:none!important}
-#nep-float,#nep-float.nep-morph,.nep-compact,#nep-float .nep-mid{transition-duration:.01s!important}}
+#nep-float,#nep-float.nep-morph,.nep-compact,#nep-float .nep-mid,.nep-mid-inner{transition-duration:.01s!important}}
 `;
 
 // 默认在顶栏下方居中；y 为 null 表示「贴着顶栏」，按顶栏实际高度算
@@ -503,7 +507,9 @@ const FLOAT_DEFAULT_POS = { x: 0.5, y: null };
 const ART = '<span class="nep-art"><img alt=""></span>';
 const WAVE = '<span class="nep-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
 // 中间态（播放卡片）的大小：固定，内容不在形变动画里重排
-const midSize = () => ({ w: Math.round(Math.min(384, window.innerWidth - 24)), h: 236 });
+const midSize = () => ({ w: Math.round(Math.min(384, window.innerWidth - 24)), h: 200 });
+const MID_RADIUS = 32;
+const MORPH_MS = 460;
 
 const fmtTime = (sec) => {
     if (!Number.isFinite(sec) || sec < 0) return '0:00';
@@ -529,16 +535,41 @@ function injectStyle() {
     document.head.appendChild(style);
 }
 
+/** rgb()/rgba()/#rgb/#rrggbb 转亮度（0 暗 ~ 1 亮），认不出返回 null。 */
+function luminanceOf(color) {
+    let rgb = null;
+    const fn = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/i.exec(color);
+    if (fn) {
+        rgb = fn.slice(1, 4).map(Number);
+    } else {
+        const hex = /^#([\da-f]{3}|[\da-f]{6})$/i.exec(color)?.[1];
+        if (hex) {
+            const full = hex.length === 3 ? [...hex].map(c => c + c).join('') : hex;
+            rgb = [0, 2, 4].map(i => parseInt(full.slice(i, i + 2), 16));
+        }
+    }
+    if (!rgb || rgb.some(n => !Number.isFinite(n))) return null;
+    return (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
+}
+
+// 酒馆改 <html>/<body> 的样式或 class 很频繁，主题颜色没变时直接用上次的结果，不插探测节点、不重算整页样式
+let inkCache = { raw: null, lum: 1 };
+
 /** 主题文字颜色的亮度（0 暗 ~ 1 亮）；取不到时按深色主题处理。 */
 function themeInkLuminance() {
-    const probe = document.createElement('span');
-    probe.style.cssText = 'position:absolute;visibility:hidden;color:var(--SmartThemeBodyColor)';
-    document.body.appendChild(probe);
-    const m = getComputedStyle(probe).color.match(/[\d.]+/g);
-    probe.remove();
-    if (!m || m.length < 3) return 1;
-    const [r, g, b] = m.slice(0, 3).map(Number);
-    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    const raw = getComputedStyle(document.body).getPropertyValue('--SmartThemeBodyColor').trim();
+    if (raw === inkCache.raw) return inkCache.lum;
+    let lum = luminanceOf(raw);
+    if (lum == null) {
+        // 变量写成颜色名等少见格式时，才让浏览器换算一次
+        const probe = document.createElement('span');
+        probe.style.cssText = 'position:absolute;visibility:hidden;color:var(--SmartThemeBodyColor)';
+        document.body.appendChild(probe);
+        lum = luminanceOf(getComputedStyle(probe).color) ?? 1;
+        probe.remove();
+    }
+    inkCache = { raw, lum };
+    return lum;
 }
 
 /** 按设置或主题决定浅色 / 深色玻璃、通透 / 不透明，写在 <html data-nep-glass data-nep-glassfx>。 */
@@ -608,17 +639,18 @@ function createFloat() {
                 ${ART}<div class="nep-text"><div class="nep-title"></div><div class="nep-sub"></div></div>
             </div>
             <button type="button" class="nep-play" aria-label="播放/暂停"><i class="nep-glyph fa-solid fa-play"></i></button>
+            <button type="button" class="nep-next" aria-label="下一首"><i class="fa-solid fa-forward"></i></button>
         </div>
         <div class="nep-mid" aria-hidden="true"><div class="nep-mid-inner">
-            <div class="nep-mid-top">${ART}${WAVE}</div>
             <div class="nep-mid-head">${ART}
-                <div class="nep-mid-text" role="button" tabindex="-1" aria-label="打开完整播放器">
+                <div class="nep-mid-text" role="button" tabindex="-1" aria-label="打开正在播放">
                     <div class="nep-mid-title"></div><div class="nep-mid-sub"></div></div>
+                ${WAVE}
             </div>
             <div class="nep-mid-track"><i></i></div>
             <div class="nep-mid-times"><span class="nep-mid-cur">0:00</span><span class="nep-mid-dur">0:00</span></div>
             <div class="nep-mid-controls">
-                <button type="button" class="nep-mid-full" tabindex="-1" aria-label="打开完整播放器"><i class="fa-solid fa-bars-staggered"></i></button>
+                <button type="button" class="nep-mid-full" tabindex="-1" aria-label="打开播放队列"><i class="fa-solid fa-list-ul"></i></button>
                 <button type="button" class="nep-mid-prev" tabindex="-1" aria-label="上一首"><i class="fa-solid fa-backward"></i></button>
                 <button type="button" class="nep-mid-play" tabindex="-1" aria-label="播放/暂停"><i class="nep-glyph fa-solid fa-play"></i></button>
                 <button type="button" class="nep-mid-next" tabindex="-1" aria-label="下一首"><i class="fa-solid fa-forward"></i></button>
@@ -628,12 +660,14 @@ function createFloat() {
     document.body.appendChild(el);
     const on = (sel, fn) => el.querySelector(sel).addEventListener('click', fn);
     on('.nep-play', withEngine(e => e.toggle()));
+    on('.nep-next', withEngine(e => e.next()));
     on('.nep-info', (e) => expandFloat(e.detail === 0));
     on('.nep-mid-play', withEngine(e => e.toggle()));
     on('.nep-mid-prev', withEngine(e => e.prev()));
     on('.nep-mid-next', withEngine(e => e.next()));
     on('.nep-mid-like', () => toggleCurrentLike());
-    for (const sel of ['.nep-mid-full', '.nep-mid-text', '.nep-mid-head .nep-art']) on(sel, () => openPanel());
+    // 卡片上的列表键、封面、歌名直接进「正在播放」（下面就是接下来播放的歌），点一下就能换歌
+    for (const sel of ['.nep-mid-full', '.nep-mid-text', '.nep-mid-head .nep-art']) on(sel, () => openPanel('now'));
     el.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             collapseFloat();
@@ -677,8 +711,7 @@ function compactSize(el) {
  * 位置按「可移动范围里的比例」保存，转屏或窗口变化后还在同一侧。
  * 用 transform 移动：不触发页面重排，胶囊自己一个图层。
  */
-function placeFloat(el, pos = savedFloatPos()) {
-    if (el.hidden || el.dataset.state === 'mid') return;
+function compactRect(el, pos = savedFloatPos()) {
     const { w, h } = compactSize(el);
     const maxX = Math.max(0, window.innerWidth - w - FLOAT_MARGIN * 2);
     const maxY = Math.max(0, window.innerHeight - h - FLOAT_MARGIN * 2);
@@ -691,8 +724,14 @@ function placeFloat(el, pos = savedFloatPos()) {
     } else {
         y = Math.round(FLOAT_MARGIN + clamp01(pos.y) * maxY);
     }
-    floatRect = { x, y, w, h };
-    el.style.transform = `translate3d(${x}px,${y}px,0)`;
+    return { x, y, w, h };
+}
+
+function placeFloat(el, pos = savedFloatPos()) {
+    // 卡片大小时（展开中、展开后、收回动画中）位置由形变逻辑管
+    if (el.hidden || el.classList.contains('nep-card')) return;
+    floatRect = compactRect(el, pos);
+    el.style.transform = `translate3d(${floatRect.x}px,${floatRect.y}px,0)`;
 }
 
 function moveFloat(el, left, top) {
@@ -723,10 +762,18 @@ function layoutMid(el) {
     el.style.width = `${w}px`;
     el.style.height = `${h}px`;
     el.style.transform = `translate3d(${x}px,${y}px,0)`;
+    cardRect = { x, y, w, h };
+    return cardRect;
+}
+
+/** 在卡片坐标里裁出胶囊那一块（圆角取胶囊高度的一半）。 */
+function clipTo(c, m) {
+    return `inset(${c.y - m.y}px ${m.x + m.w - c.x - c.w}px ${m.y + m.h - c.y - c.h}px ${c.x - m.x}px round ${c.h / 2}px)`;
 }
 
 let midTimer = 0;
 let morphEnd = null;
+let cardRect = null;
 
 function onOutsidePointer(e) {
     if (miniBar.float && !miniBar.float.contains(e.target)) collapseFloat();
@@ -737,18 +784,29 @@ function setMidFocusable(el, on) {
     for (const b of el.querySelectorAll('.nep-mid [tabindex]')) b.tabIndex = on ? 0 : -1;
 }
 
-/** 胶囊 → 播放卡片：先把当前大小写死，下一帧再改成卡片大小，宽高和位置一起做弹簧形变。 */
+/**
+ * 胶囊 → 播放卡片。元素一步换成卡片的大小和位置，再用 clip-path 把可见部分裁回胶囊那一块，
+ * 下一帧把裁切放开到整张卡片：只有 clip-path 在过渡，宽高不动，形变期间不触发重排；
+ * 卡片是纯黑底、不做背景模糊，每帧重画的成本很低。
+ */
 export function expandFloat(focus = false) {
     const el = miniBar.float;
     if (!el || el.hidden || el.dataset.state === 'mid') return;
     clearTimeout(morphEnd);
-    const { w, h } = compactSize(el);
-    el.style.width = `${w}px`;
-    el.style.height = `${h}px`;
-    void el.offsetWidth;
+    if (!el.classList.contains('nep-card')) {
+        const c = floatRect || compactRect(el);
+        el.classList.remove('nep-morph');
+        el.classList.add('nep-card');
+        const m = layoutMid(el);
+        el.style.clipPath = clipTo(c, m);
+        void el.offsetWidth;
+    } else {
+        // 收回动画还没播完又点开：从当前的裁切接着放开
+        layoutMid(el);
+    }
     el.classList.add('nep-morph');
     el.dataset.state = 'mid';
-    layoutMid(el);
+    el.style.clipPath = `inset(0px round ${MID_RADIUS}px)`;
     setMidFocusable(el, true);
     miniBar.render();
     renderMidProgress();
@@ -758,7 +816,10 @@ export function expandFloat(focus = false) {
     if (focus) el.querySelector('.nep-mid-play').focus({ preventScroll: true });
 }
 
-/** 播放卡片 → 胶囊：形变回胶囊的大小和位置，动画结束后把宽高交还给内容。 */
+/**
+ * 播放卡片 → 胶囊：黑色卡片先收拢成胶囊的形状，动画结束后元素换回胶囊大小，
+ * 黑底淡出、玻璃胶囊淡入（这时才恢复背景模糊，模糊只在最终大小上算一次）。
+ */
 export function collapseFloat() {
     const el = miniBar.float;
     if (!el || el.dataset.state !== 'mid') return;
@@ -766,17 +827,17 @@ export function collapseFloat() {
     document.removeEventListener('pointerdown', onOutsidePointer, true);
     setMidFocusable(el, false);
     el.dataset.state = 'compact';
-    const { w, h } = compactSize(el);
-    el.style.width = `${w}px`;
-    el.style.height = `${h}px`;
-    placeFloat(el);
+    const c = compactRect(el);
+    el.style.clipPath = clipTo(c, cardRect || layoutMid(el));
     clearTimeout(morphEnd);
     morphEnd = setTimeout(() => {
         if (el.dataset.state !== 'compact') return;
-        el.classList.remove('nep-morph');
+        el.classList.remove('nep-morph', 'nep-card');
+        el.style.clipPath = '';
         el.style.width = '';
         el.style.height = '';
-    }, 520);
+        placeFloat(el);
+    }, MORPH_MS);
 }
 
 function renderMidProgress() {
@@ -1164,7 +1225,7 @@ const EXT_DIR = (() => {
 })();
 const EXT_URL = (file) => new URL(file, import.meta.url).href;
 // 这一版前端需要的服务端插件最低版本
-const SERVER_MIN = '0.5.0';
+export const SERVER_MIN = '0.6.0';
 let runningVersion = '';
 
 async function manifestVersion(url) {
@@ -1176,7 +1237,7 @@ async function manifestVersion(url) {
     }
 }
 
-function versionLess(a, b) {
+export function versionLess(a, b) {
     const pa = String(a).split('.').map(Number);
     const pb = String(b).split('.').map(Number);
     for (let i = 0; i < 3; i++) {
@@ -1246,7 +1307,7 @@ function bindUpdater(el) {
         serverChecked = true;
         const sv = await serverVersion();
         if (sv && versionLess(sv, SERVER_MIN)) {
-            say(`服务端插件版本较旧（${esc(sv)}），首页推荐、红心、收藏到歌单需要 ${SERVER_MIN} 以上。在服务器上按 README「从 0.4 升级到 0.5」覆盖插件文件并重启酒馆。`);
+            say(`服务端插件版本较旧（${esc(sv)}）。收藏到歌单、从歌单删除需要 ${SERVER_MIN} 以上，旧版会把成功误报为失败。按 README「升级到 0.6」在服务器上覆盖插件文件并重启酒馆。`);
         }
     });
     let busy = false;

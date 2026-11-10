@@ -224,11 +224,12 @@ export function next() {
     startIndex(to, { reason: '下一首' });
 }
 
-export function prev() {
+/** 上一首；restart 为真时（默认，按键行为）放过 5 秒的先回到本首开头，滑动切歌时传 false。 */
+export function prev(restart = true) {
     unlock();
     userPaused = false;
     if (!state.queue.length) return;
-    if (current && !isSilence() && audio.currentTime > 5) {
+    if (restart && current && !isSilence() && audio.currentTime > 5) {
         audio.currentTime = 0;
         return;
     }
