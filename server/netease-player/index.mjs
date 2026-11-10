@@ -185,6 +185,10 @@ async function fetchAccount(req) {
         nickname: profile.nickname || '',
         avatar: profile.avatarUrl || '',
         vipType: data.account?.vipType ?? profile.vipType ?? 0,
+        // 首页个人资料用：简介、地区（网易云的行政区划编码，前端换成名称）
+        signature: String(profile.signature || '').slice(0, 300),
+        province: Number(profile.province) || 0,
+        city: Number(profile.city) || 0,
     };
     cacheSet(key, account, 10 * 60 * 1000);
     return account;

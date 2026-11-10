@@ -3,7 +3,7 @@
 import {
     api, store, settings, saveSettings, getLog, clearLog, gen, miniBar, resetFloatPosition, likes,
     setEntry, setGlass, setGlassFx, ENTRY_OPTIONS, GLASS_OPTIONS, GLASSFX_OPTIONS,
-    unlock, isUnlocked, SERVER_MIN, versionLess,
+    unlock, isUnlocked, SERVER_MIN, versionLess, applyBusy,
 } from './index.js';
 import * as engine from './engine.js';
 
@@ -25,6 +25,8 @@ overflow:hidden;contain:layout style;transform-origin:50% 0;animation:nep-in .3s
 #nep-panel button{font:inherit;color:inherit;background:transparent;border:0;padding:0;margin:0;cursor:pointer;
 -webkit-tap-highlight-color:transparent}
 #nep-panel button:disabled{opacity:.45;cursor:default}
+/* 酒馆和主题会给按钮、输入框、滑块加边框、阴影、最小高度，这里清掉 */
+#nep-panel :is(button,input,select){box-shadow:none;text-shadow:none;filter:none;letter-spacing:0;text-transform:none}
 #nep-panel :is(button,input,select,[tabindex]):focus-visible{outline:2px solid var(--nep-accent);outline-offset:2px}
 #nep-panel :is(h1,h2,h3){font-family:inherit;color:var(--nep-ink);text-shadow:none;letter-spacing:0}
 #nep-panel img{-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
@@ -47,11 +49,10 @@ transition:transform .16s var(--nep-ease-out),background-color .16s ease}
 .nep-top{flex:none;display:flex;align-items:center;gap:2px;height:58px;padding:0 8px 0 20px}
 .nep-top.nep-has-back{padding-left:6px}
 .nep-top h1{flex:1;min-width:0;margin:0;font-size:17px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.nep-top[data-view=home] h1{font-size:22px;font-weight:700}
 .nep-top .nep-avatar img{width:30px;height:30px;border-radius:50%;object-fit:cover;display:block}
 .nep-body{flex:1;min-height:0;contain:content;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:2px 16px 24px}
 
-.nep-sec{margin:0 0 30px}
+.nep-sec{margin:0 0 28px}
 .nep-sec:last-child{margin-bottom:6px}
 .nep-sec-head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:32px;margin:0 0 10px}
 .nep-sec-head h2{flex:1;min-width:0;margin:0;font-size:19px;font-weight:700;line-height:1.25}
@@ -63,6 +64,26 @@ transition:transform .16s var(--nep-ease-out),background-color .16s ease}
 .nep-error{color:var(--nep-accent);font-size:13px;margin:6px 2px}
 .nep-bone{display:block;border-radius:6px;background:var(--nep-raise)}
 .nep-ph{display:block;background:var(--nep-raise-2)}
+
+/* 首页顶部的个人资料：头像、昵称、简介、地区；点一下进「账号与设置」 */
+.nep-sec.nep-profile-sec{margin-bottom:20px}
+.nep-profile{display:flex;align-items:center;gap:16px;min-height:72px;padding:6px 8px;margin:0 -8px;border-radius:20px;cursor:pointer;
+transition:background-color .15s ease,transform .16s var(--nep-ease-out)}
+.nep-profile:active{background:var(--nep-raise);transform:scale(.985)}
+.nep-profile-avatar{flex:none;display:grid;place-items:center;width:72px;height:72px;border-radius:50%;overflow:hidden;background:var(--nep-raise-2);
+color:var(--nep-ink-2);font-size:26px;box-shadow:0 0 0 2px var(--nep-paper),0 6px 16px rgba(0,0,0,.14)}
+.nep-profile-avatar img{display:block;width:100%;height:100%;object-fit:cover}
+.nep-profile-main{flex:1;min-width:0}
+.nep-profile-name{display:flex;align-items:center;gap:8px;min-width:0;font-size:20px;font-weight:700;line-height:1.25}
+.nep-profile-name>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nep-vip{flex:none;padding:0 6px;border-radius:6px;font-size:10px;font-weight:700;line-height:17px;color:var(--nep-tint-ink);background:var(--nep-tint)}
+.nep-profile-bio{margin:4px 0 0;font-size:14px;line-height:1.45;color:var(--nep-ink-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nep-profile-meta{display:flex;align-items:center;gap:5px;margin-top:6px;font-size:12px;line-height:1.3;color:var(--nep-ink-2)}
+.nep-profile-meta i{font-size:11px;opacity:.8}
+.nep-profile>.fa-chevron-right{flex:none;margin-right:4px;font-size:12px;color:var(--nep-ink-2)}
+.nep-group .nep-profile{margin:0;padding:14px 16px;border-radius:0;cursor:default}
+.nep-group .nep-profile:active{background:transparent;transform:none}
+.nep-group .nep-profile-avatar{width:60px;height:60px;box-shadow:none}
 
 /* 首页：每日推荐。背景是放大的小尺寸封面，自带柔焦，不用 filter 模糊 */
 .nep-hero{position:relative;isolation:isolate;display:flex;flex-direction:column;justify-content:space-between;height:176px;
@@ -88,7 +109,14 @@ font-size:18px;box-shadow:0 6px 16px rgba(0,0,0,.25);transition:transform .16s v
 .nep-mine-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .nep-mine{display:flex;align-items:center;gap:10px;min-width:0;height:60px;padding:0 10px 0 0;border-radius:14px;background:var(--nep-raise);
 overflow:hidden;cursor:pointer}
-.nep-mine>img,.nep-mine>.nep-ph{width:60px;height:60px;flex:none;object-fit:cover;background:var(--nep-raise-2)}
+.nep-mine>.nep-ph{width:60px;height:60px;flex:none}
+/* 封面就是播放键：点封面直接放这个歌单，点文字进歌单页 */
+#nep-panel .nep-mine-play{position:relative;flex:none;width:60px;height:60px;background:var(--nep-raise-2)}
+.nep-mine-play img{display:block;width:100%;height:100%;object-fit:cover}
+.nep-mine-play i{position:absolute;right:5px;bottom:5px;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;
+background:rgba(0,0,0,.46);color:#fff;font-size:8px;transition:transform .16s var(--nep-ease-out)}
+.nep-mine-play i.fa-play{padding-left:1px}
+.nep-mine-play:active i{transform:scale(.86)}
 .nep-mine-text{flex:1;min-width:0;line-height:1.3}
 .nep-mine-name{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nep-mine-sub{margin-top:2px;font-size:12px;color:var(--nep-ink-2)}
@@ -202,14 +230,18 @@ box-shadow:0 16px 36px rgba(0,0,0,.28);transform:scale(.88);transition:transform
 #nep-panel .nep-np-info .nep-like.nep-on{color:var(--nep-accent)}
 .nep-progress{margin-top:12px}
 /* 进度条：可点区域 24px 高，画出来的轨道 5px */
-#nep-panel .nep-seek{display:block;width:100%;height:24px;margin:0;padding:0;-webkit-appearance:none;appearance:none;background:transparent;cursor:pointer}
+/* 选择器都带上 #nep-panel：酒馆给 input[type=range] 及其滑块写了全局样式，优先级低了会被盖掉 */
+#nep-panel .nep-seek{display:block;width:100%;height:24px;margin:0;padding:0;-webkit-appearance:none;appearance:none;background:transparent;cursor:pointer;
+border:0;border-radius:0;outline-offset:0}
 /* taste-skill-ignore: 单色进度填充，不是渐变 */
-.nep-seek::-webkit-slider-runnable-track{height:5px;border-radius:3px;background:linear-gradient(var(--nep-ink),var(--nep-ink)) 0/var(--nep-fill,0%) 100% no-repeat,var(--nep-raise-3)}
+#nep-panel .nep-seek::-webkit-slider-runnable-track{height:5px;border:0;border-radius:3px;box-shadow:none;
+background:linear-gradient(var(--nep-ink),var(--nep-ink)) 0/var(--nep-fill,0%) 100% no-repeat,var(--nep-raise-3)}
 /* taste-skill-ignore: 同上 */
-.nep-seek::-moz-range-track{height:5px;border-radius:3px;background:linear-gradient(var(--nep-ink),var(--nep-ink)) 0/var(--nep-fill,0%) 100% no-repeat,var(--nep-raise-3)}
-.nep-seek::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;margin-top:-5px;border-radius:50%;background:var(--nep-ink);border:0;
-box-shadow:0 1px 4px rgba(0,0,0,.25)}
-.nep-seek::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--nep-ink);border:0}
+#nep-panel .nep-seek::-moz-range-track{height:5px;border:0;border-radius:3px;box-shadow:none;
+background:linear-gradient(var(--nep-ink),var(--nep-ink)) 0/var(--nep-fill,0%) 100% no-repeat,var(--nep-raise-3)}
+#nep-panel .nep-seek::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:15px;height:15px;margin-top:-5px;border-radius:50%;
+background:var(--nep-ink);border:0;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:pointer}
+#nep-panel .nep-seek::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--nep-ink);border:0;box-shadow:0 1px 4px rgba(0,0,0,.25)}
 .nep-times{display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:var(--nep-ink-2);font-variant-numeric:tabular-nums}
 .nep-controls{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
 #nep-panel .nep-controls .nep-icon{width:52px;height:52px;font-size:24px}
@@ -217,7 +249,29 @@ box-shadow:0 1px 4px rgba(0,0,0,.25)}
 #nep-panel .nep-controls .nep-side.nep-on{color:var(--nep-accent)}
 #nep-panel .nep-controls .nep-np-toggle{width:68px;height:68px;background:var(--nep-accent);color:var(--nep-on-accent);font-size:26px;
 box-shadow:0 8px 20px rgba(0,0,0,.2)}
-.nep-upnext-head{margin-top:28px}
+.nep-upnext-head{margin-top:24px}
+/* 还没有歌：封面位换成图标，给一个去首页的按钮，不显示红心和收藏 */
+.nep-np-blank{display:none;place-items:center;width:min(224px,56vw,27dvh);aspect-ratio:1;border-radius:20px;background:var(--nep-raise);
+color:var(--nep-ink-2);font-size:44px}
+.nep-np.nep-empty .nep-np-blank{display:grid}
+#nep-panel .nep-np.nep-empty :is(.nep-np-cover,.nep-np-ambient,.nep-np-info .nep-icon,.nep-progress,.nep-controls,.nep-upnext-head,.nep-upnext){display:none}
+.nep-np.nep-empty .nep-np-stage{cursor:default}
+.nep-np.nep-empty .nep-np-info{margin-top:20px;text-align:center}
+#nep-panel .nep-np-cta{display:none;align-self:center;margin-top:18px}
+#nep-panel .nep-np.nep-empty .nep-np-cta{display:inline-flex}
+/* 切换歌单：一排自己的歌单，点一下直接换 */
+.nep-strip-label{margin:22px 0 8px;font-size:13px;font-weight:600;color:var(--nep-ink-2)}
+.nep-strip-wrap:empty{display:none}
+.nep-strip{display:flex;gap:8px;overflow-x:auto;margin:0 -16px;padding:0 16px 2px;scrollbar-width:none;overscroll-behavior-x:contain}
+.nep-strip::-webkit-scrollbar{display:none}
+#nep-panel .nep-strip-item{flex:none;display:flex;align-items:center;gap:8px;max-width:168px;height:44px;padding:0 12px 0 4px;border-radius:22px;
+background:var(--nep-raise);font-size:14px;font-weight:500;transition:transform .16s var(--nep-ease-out),background-color .16s ease}
+#nep-panel .nep-strip-item:active{transform:scale(.96);background:var(--nep-raise-2)}
+.nep-strip-item>span:first-child{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;overflow:hidden;background:var(--nep-raise-2);
+font-size:12px;color:var(--nep-ink-2)}
+.nep-strip-item img{display:block;width:100%;height:100%;object-fit:cover}
+.nep-strip-item>span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#nep-panel .nep-strip-item.nep-on{background:var(--nep-tint);color:var(--nep-tint-ink);font-weight:600}
 
 .nep-scrim{position:absolute;inset:0;z-index:5;display:flex;align-items:flex-end;padding:8px;background:rgba(0,0,0,.3);animation:nep-fade .2s ease}
 .nep-scrim.nep-leaving{animation:nep-fade-out .16s ease forwards;pointer-events:none}
@@ -245,7 +299,7 @@ box-shadow:0 10px 40px rgba(0,0,0,.25);animation:nep-rise .34s var(--nep-ease-dr
 .nep-group-title:first-child{margin-top:6px}
 .nep-group{border-radius:18px;background:var(--nep-raise);overflow:hidden}
 .nep-set{display:flex;align-items:center;gap:12px;width:100%;min-height:50px;padding:6px 16px;text-align:left}
-.nep-set+.nep-set{box-shadow:inset 0 1px 0 var(--nep-raise)}
+#nep-panel :is(.nep-set,.nep-profile)+.nep-set{box-shadow:inset 0 1px 0 var(--nep-raise)}
 .nep-set>span{flex:1;min-width:0}
 #nep-panel .nep-set-btn{padding:6px 16px;font-size:15px;transition:background-color .15s ease}
 #nep-panel .nep-set-btn:active{background:var(--nep-raise-2)}
@@ -341,6 +395,41 @@ function badges(t) {
 }
 
 const isLiked = (id) => likes.has(id);
+
+// 网易云的地区是行政区划编码：省级取前两位；海外统一是 1000000
+const PROVINCES = {
+    11: '北京', 12: '天津', 13: '河北', 14: '山西', 15: '内蒙古', 21: '辽宁', 22: '吉林', 23: '黑龙江', 31: '上海', 32: '江苏', 33: '浙江',
+    34: '安徽', 35: '福建', 36: '江西', 37: '山东', 41: '河南', 42: '湖北', 43: '湖南', 44: '广东', 45: '广西', 46: '海南', 50: '重庆',
+    51: '四川', 52: '贵州', 53: '云南', 54: '西藏', 61: '陕西', 62: '甘肃', 63: '青海', 64: '宁夏', 65: '新疆', 71: '台湾', 81: '香港', 82: '澳门',
+};
+
+function regionName(province) {
+    const code = Number(province) || 0;
+    if (code === 1000000) return '海外';
+    return PROVINCES[Math.floor(code / 10000)] || '';
+}
+
+/**
+ * 个人资料块：头像、昵称、简介、地区。首页顶部和「账号与设置」共用。
+ * tail 是放在右侧的内容（首页是箭头，设置页不放）。
+ */
+function profileBlock({ attrs = '', tail = '' } = {}) {
+    const a = state.account;
+    const wrap = (avatar, name, lines) => `<div class="nep-profile" ${attrs}><span class="nep-profile-avatar">${avatar}</span>
+        <div class="nep-profile-main"><div class="nep-profile-name">${name}</div>${lines}</div>${tail}</div>`;
+    const icon = '<i class="fa-solid fa-user" aria-hidden="true"></i>';
+    if (state.accountError && !a) return wrap(icon, '<span>连接失败</span>', `<p class="nep-profile-bio">${esc(state.accountError)}</p>`);
+    if (!a) {
+        return wrap('', '<span class="nep-bone" style="width:42%;height:20px"></span>',
+            '<span class="nep-bone" style="width:76%;height:13px;margin-top:9px"></span><span class="nep-bone" style="width:30%;height:11px;margin-top:8px"></span>');
+    }
+    if (!a.loggedIn) return wrap(icon, '<span>未登录</span>', '<p class="nep-profile-bio">登录后同步歌单、红心与每日推荐</p>');
+    const region = regionName(a.province);
+    return wrap(a.avatar ? `<img src="${esc(art(a.avatar, 216))}" alt="">` : icon,
+        `<span>${esc(a.nickname || '网易云用户')}</span>${a.vipType > 0 ? '<span class="nep-vip">VIP</span>' : ''}`,
+        `${a.signature ? `<p class="nep-profile-bio">${esc(a.signature)}</p>` : ''}
+        ${region ? `<div class="nep-profile-meta"><i class="fa-solid fa-location-dot" aria-hidden="true"></i>${region}</div>` : ''}`);
+}
 
 // ---------- 长列表分批渲染：先画 LIST_STEP 行，滑到底附近再接着画 ----------
 
@@ -448,6 +537,7 @@ function build() {
             <div class="nep-nowbar-line"><i></i></div>
         </div>`;
     document.body.appendChild(root);
+    applyBusy();
     top = root.querySelector('.nep-top');
     body = root.querySelector('.nep-body');
     nowbar = root.querySelector('.nep-nowbar');
@@ -634,10 +724,12 @@ function renderTop() {
     top.querySelector('[data-nav=search]').hidden = v === 'search';
     const avatar = top.querySelector('.nep-avatar');
     avatar.hidden = v === 'settings';
-    const pic = state.account?.loggedIn && state.account.avatar ? art(state.account.avatar, 80) : '';
-    if (avatar.dataset.pic !== pic) {
-        avatar.dataset.pic = pic;
-        avatar.innerHTML = pic ? `<img src="${esc(pic)}" alt="">` : '<i class="fa-solid fa-circle-user"></i>';
+    // 首页的头像在个人资料块里，右上角换成设置图标
+    const pic = v !== 'home' && state.account?.loggedIn && state.account.avatar ? art(state.account.avatar, 80) : '';
+    const key = pic || (v === 'home' ? 'gear' : 'user');
+    if (avatar.dataset.pic !== key) {
+        avatar.dataset.pic = key;
+        avatar.innerHTML = pic ? `<img src="${esc(pic)}" alt="">` : `<i class="fa-solid ${v === 'home' ? 'fa-gear' : 'fa-circle-user'}"></i>`;
     }
 }
 
@@ -713,11 +805,11 @@ function syncRowHearts() {
 // ---------- 首页 ----------
 
 // 首页分四块，数据各自到达时只替换对应的那一块；内容没变就不碰 DOM，免得封面重新加载闪一下
-const HOME = ['daily', 'mine', 'rec', 'top'];
+const HOME = ['profile', 'daily', 'mine', 'rec', 'top'];
 const homeHtml = new Map();
 
 function homeRenderer(key) {
-    return { daily: renderDaily, mine: renderMineSection, rec: renderRecSection, top: renderTopSection }[key];
+    return { profile: renderProfile, daily: renderDaily, mine: renderMineSection, rec: renderRecSection, top: renderTopSection }[key];
 }
 
 function renderHome() {
@@ -737,6 +829,13 @@ function updateHome(key) {
     if (!el) return void rerenderKeepScroll();
     homeHtml.set(key, html);
     el.outerHTML = html;
+}
+
+function renderProfile() {
+    return `<section class="nep-sec nep-profile-sec" data-sec="profile">${profileBlock({
+        attrs: 'data-nav="settings" role="button" tabindex="0" aria-label="账号与设置"',
+        tail: CHEVRON,
+    })}</section>`;
 }
 
 function renderDaily() {
@@ -777,10 +876,14 @@ function playlistRow(p, i) {
 }
 
 function mineTile(p, i) {
-    return `<div class="nep-mine" data-act="open-playlist" data-i="${i}" role="button" tabindex="0">${img(p.cover, 120)}
+    const busy = state.busyPlay === `mine:${p.id}`;
+    return `<div class="nep-mine" data-act="open-playlist" data-i="${i}" role="button" tabindex="0">
+        <button type="button" class="nep-mine-play" data-act="play-mine" data-i="${i}" aria-label="播放：${esc(p.name)}">${imgTag(p.cover, 120)}${playGlyph(busy)}</button>
         <div class="nep-mine-text"><div class="nep-mine-name">${esc(p.name)}</div>
         <div class="nep-mine-sub">${p.liked ? '<i class="fa-solid fa-heart nep-heart" aria-hidden="true"></i>' : ''}${p.count} 首</div></div></div>`;
 }
+
+const playGlyph = (busy) => `<i class="fa-solid ${busy ? 'fa-circle-notch fa-spin' : 'fa-play'}"></i>`;
 
 function refreshButton(act) {
     const busy = state.playlistsLoading || !!state.playlist?.loading;
@@ -816,8 +919,6 @@ function renderMyPlaylists() {
     return `<div class="nep-sec-head"><h2>${state.playlists.length} 个歌单</h2>${refreshButton('refresh-playlists')}</div>`
         + lazyList('playlists', state.playlists, playlistRow);
 }
-
-const playGlyph = (busy) => `<i class="fa-solid ${busy ? 'fa-circle-notch fa-spin' : 'fa-play'}"></i>`;
 
 function renderRecSection() {
     const h = state.home;
@@ -982,7 +1083,8 @@ function renderNowView() {
     upnextSig = null;
     return `<div class="nep-np">
         <img class="nep-np-ambient" alt="" aria-hidden="true">
-        <div class="nep-np-stage" title="左右滑动切歌"><img class="nep-np-cover" alt=""></div>
+        <div class="nep-np-stage" title="左右滑动切歌"><img class="nep-np-cover" alt="">
+            <span class="nep-np-blank" aria-hidden="true"><i class="fa-solid fa-music"></i></span></div>
         <div class="nep-np-info">
             <div class="nep-np-text"><div class="nep-np-title"></div><div class="nep-np-sub"></div></div>
             <button type="button" class="nep-icon nep-like" data-act="like-current" aria-label="红心"><i class="fa-solid fa-heart nep-heart-off"></i></button>
@@ -997,9 +1099,40 @@ function renderNowView() {
             <button type="button" class="nep-icon" data-act="next" aria-label="下一首"><i class="fa-solid fa-forward"></i></button>
             <button type="button" class="nep-icon nep-side nep-silent" data-act="silent" aria-label="静音播放"><i class="fa-solid fa-volume-xmark"></i></button>
         </div>
+        <button type="button" class="nep-btn nep-btn-primary nep-np-cta" data-act="go-home">去首页选歌单</button>
+        <div class="nep-strip-wrap">${stripHtml()}</div>
         <div class="nep-sec-head nep-upnext-head">${upNextHead(s)}</div>
         <div class="nep-upnext">${upNextHtml(s)}</div>
     </div>`;
+}
+
+let stripCache = '';
+
+/** 切换歌单：自己的全部歌单排成一行，点一下直接从头播放；正在放的那个高亮。 */
+function stripHtml() {
+    const all = loggedIn() ? state.playlists : null;
+    if (!all?.length) return (stripCache = '');
+    const playingId = engine.getState().source?.id;
+    const items = all.map((p, i) => {
+        const busy = state.busyPlay === `mine:${p.id}`;
+        const on = String(p.id) === String(playingId);
+        return `<button type="button" class="nep-strip-item${on ? ' nep-on' : ''}" data-act="play-mine" data-i="${i}" aria-label="播放歌单：${esc(p.name)}">
+            <span>${busy ? '<i class="fa-solid fa-circle-notch fa-spin"></i>' : imgTag(p.cover, 108)}</span><span>${esc(p.name)}</span></button>`;
+    }).join('');
+    return (stripCache = `<div class="nep-strip-label">切换歌单</div><div class="nep-strip">${items}</div>`);
+}
+
+/** 歌单列表、正在放的歌单或「正在取歌」状态变了才重画这一行，并保持横向滚动位置。 */
+function syncStrip() {
+    const wrap = body?.querySelector('.nep-strip-wrap');
+    if (!wrap) return;
+    const before = stripCache;
+    const html = stripHtml();
+    if (html === before) return;
+    const left = wrap.querySelector('.nep-strip')?.scrollLeft || 0;
+    wrap.innerHTML = html;
+    const strip = wrap.querySelector('.nep-strip');
+    if (strip) strip.scrollLeft = left;
 }
 
 const UPNEXT_LABEL = { loop: '接下来播放', shuffle: '随机播放中', one: '单曲循环中' };
@@ -1067,9 +1200,10 @@ function renderNow() {
     const np = body?.querySelector('.nep-np');
     if (np) {
         np.classList.toggle('nep-playing', !!playing);
+        np.classList.toggle('nep-empty', !t && !s.silent);
         np.querySelector('.nep-np-title').textContent = title;
         const sub = np.querySelector('.nep-np-sub');
-        sub.textContent = subText || '去首页挑一个歌单';
+        sub.textContent = subText || '选一个歌单，或者搜一首歌';
         sub.className = `nep-np-sub ${tone}`;
         setSrc(np.querySelector('.nep-np-cover'), t?.pic ? art(t.pic, 500) : '');
         setSrc(np.querySelector('.nep-np-ambient'), t?.pic ? art(t.pic, 40) : '');
@@ -1088,6 +1222,7 @@ function renderNow() {
         mode.innerHTML = `<i class="fa-solid ${MODES[s.mode][0]}"></i>`;
         mode.setAttribute('aria-label', `播放模式：${MODES[s.mode][1]}`);
         renderUpNext();
+        syncStrip();
     }
     renderProgress();
 }
@@ -1305,10 +1440,28 @@ function afterLikeChange() {
     syncRowHearts();
 }
 
-/** 服务端插件 0.6.0 以前会把成功的写操作报成失败。 */
-function serverTooOld() {
+/** 服务端插件 0.6.0 以前会把成功的歌单写操作报成失败。 */
+function writeMisreported() {
     const v = state.account?.pluginVersion || '';
-    return !v || versionLess(v, SERVER_MIN);
+    return !v || versionLess(v, '0.6.0');
+}
+
+/**
+ * 旧版服务端报了失败：重新向网易云取一次歌单列表，看这个歌单的曲目数有没有按预期变化。
+ * 返回 true（确实成功了）、false（没变）或 null（核对不了）。
+ */
+async function verifyWrite(pid, delta) {
+    const before = state.playlists?.find(p => String(p.id) === String(pid))?.count;
+    if (!Number.isFinite(before)) return null;
+    try {
+        const data = await api('playlists', { fresh: true });
+        const after = data.playlists.find(p => String(p.id) === String(pid))?.count;
+        applyPlaylists(data.playlists);
+        showPlaylistsChange();
+        return Number.isFinite(after) ? after - before === delta : null;
+    } catch {
+        return null;
+    }
 }
 
 async function collectTo(track, pid) {
@@ -1319,13 +1472,11 @@ async function collectTo(track, pid) {
         toast('success', `已收藏到「${target?.name || '歌单'}」`);
         markPlaylistsStale();
     } catch (error) {
-        if (serverTooOld() && !error.needLogin) {
-            const v = state.account?.pluginVersion || '0.5.2 或更早';
-            toast('error', `服务端插件版本过旧（${v}），会把收藏成功误报为失败，歌可能已经加进歌单。请在服务器上更新到 ${SERVER_MIN} 并重启酒馆。`);
-            markPlaylistsStale();
-        } else {
-            toast('error', error.message);
-        }
+        if (!writeMisreported() || error.needLogin) return void toast('error', error.message);
+        const ok = await verifyWrite(pid, 1);
+        if (ok) toast('success', `已收藏到「${target?.name || '歌单'}」`);
+        else if (ok === false) toast('warning', `没有加进「${target?.name || '歌单'}」：歌单里已有这首歌，或网易云拒绝了这次操作`);
+        else toast('error', '收藏结果无法确认，请刷新歌单查看');
     }
 }
 
@@ -1333,19 +1484,25 @@ async function removeFromPlaylist(track) {
     const pl = state.playlist;
     if (!pl) return;
     closeSheet();
-    try {
-        await api('playlist/remove', { pid: pl.meta.id, ids: [track.id] });
+    const removed = () => {
+        toast('success', `已从「${pl.meta.name}」删除`);
+        // 核对时发现曲目数变了会整个重拉这个歌单（state.playlist 换成新对象），那就不用再手动摘掉这一行
+        if (state.playlist !== pl) return;
         const at = pl.tracks.findIndex(t => t.id === track.id);
         if (at >= 0) pl.tracks.splice(at, 1);
-        pl.meta = { ...pl.meta, count: Math.max(0, pl.meta.count - 1) };
-        toast('success', `已从「${pl.meta.name}」删除`);
         list = null;
-        rerenderKeepScroll();
+        if (view().view === 'playlist') rerenderKeepScroll();
+    };
+    try {
+        await api('playlist/remove', { pid: pl.meta.id, ids: [track.id] });
+        pl.meta = { ...pl.meta, count: Math.max(0, pl.meta.count - 1) };
+        removed();
         markPlaylistsStale();
     } catch (error) {
-        toast('error', serverTooOld() && !error.needLogin
-            ? `服务端插件版本过旧，会把删除成功误报为失败。请在服务器上更新到 ${SERVER_MIN} 并重启酒馆。`
-            : error.message);
+        if (!writeMisreported() || error.needLogin) return void toast('error', error.message);
+        const ok = await verifyWrite(pl.meta.id, -1);
+        if (ok) removed();
+        else toast('error', ok === false ? '没有删掉，网易云拒绝了这次操作' : '删除结果无法确认，请刷新歌单查看');
     }
 }
 
@@ -1362,6 +1519,7 @@ async function playRemote(kind, meta) {
     unlock();
     state.busyPlay = `${kind}:${meta.id}`;
     updateHome(kind);
+    syncStrip();
     try {
         const data = await api('playlist/tracks', { id: meta.id, offset: 0, limit: 200 });
         if (!data.tracks.length) throw new Error('这个歌单是空的');
@@ -1375,6 +1533,7 @@ async function playRemote(kind, meta) {
     }
     state.busyPlay = '';
     updateHome(kind);
+    syncStrip();
 }
 
 // ---------- 账号与设置 ----------
@@ -1386,12 +1545,8 @@ function renderAccount() {
     }
     if (!state.account) return '<div class="nep-set"><span class="nep-hint" style="margin:0;padding:0">正在查询登录状态…</span></div>';
     if (state.account.loggedIn) {
-        const vip = state.account.vipType > 0 ? '，VIP' : '';
-        return `<div class="nep-row">
-            ${lead(state.account.avatar)}
-            <div class="nep-row-main"><div class="nep-row-title">${esc(state.account.nickname)}</div>
-            <div class="nep-row-sub">已登录网易云${vip}</div></div>
-            <button type="button" class="nep-btn nep-btn-sm" data-act="logout">退出</button></div>`;
+        return `${profileBlock()}
+            <button type="button" class="nep-set nep-set-btn nep-danger" data-act="logout"><span>退出登录</span></button>`;
     }
     const qr = state.qr;
     let html = '<div class="nep-hint">未登录时只能播放免费歌曲，没有每日推荐和红心；VIP 歌曲需要登录 VIP 账号。</div>';
@@ -1519,6 +1674,7 @@ function showPlaylistsChange() {
     const v = view().view;
     if (v === 'home') updateHome('mine');
     else if (v === 'playlists') rerenderKeepScroll();
+    else if (v === 'now') syncStrip();
 }
 
 /**
@@ -1824,6 +1980,15 @@ function onClick(e) {
             });
             return;
         case 'open-playlist': return void (state.playlists?.[i] && openPlaylist('mine', state.playlists[i]));
+        case 'play-mine': return void playRemote('mine', state.playlists?.[i]);
+        case 'go-home':
+            closeSheet();
+            remember();
+            state.stack = [{ view: 'home' }];
+            list = null;
+            render();
+            body.scrollTop = 0;
+            return;
 
         // 歌单页
         case 'refresh-playlist':

@@ -290,6 +290,8 @@ const check = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${msg}`); 
   await home();
   await page.waitForFunction(() => document.querySelector('#nep-panel [data-act=open-playlist] .nep-mine-sub')?.textContent.startsWith('3 首'), null, { timeout: 5000 });
   check(true, '歌单列表 3 首');
+  const profile = await page.$eval('#nep-panel .nep-profile', el => el.textContent.replace(/\s+/g, ' ').trim());
+  check(profile.includes('测试用户') && profile.includes('测试简介') && profile.includes('广东'), `首页顶部显示昵称、简介、地区: ${profile}`);
   setPlaylistVersion(2); // 在网易云 App 里加了一首
   const cached = await page.evaluate(async () => {
     const res = await fetch('/api/plugins/netease-player/playlists', { method: 'POST', headers: SillyTavern.getContext().getRequestHeaders(), body: '{}' });

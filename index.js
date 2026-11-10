@@ -187,7 +187,63 @@ let genGotMessage = false;
 let genEndTimer = null;
 let genRevertTimer = null;
 
+// ---------- 卡顿自检：生成期间页面最长停顿多久、其中本扩展自己的代码占了多少 ----------
+
+const perf = { own: 0, depth: 0, stall: 0, last: 0, timer: 0, startedAt: 0 };
+const STALL_TICK = 200;
+
+/** 给入口函数计时（事件回调、观察器回调）。嵌套调用只算最外层。 */
+export function timed(fn) {
+    return function (...args) {
+        if (perf.depth++) {
+            try {
+                return fn.apply(this, args);
+            } finally {
+                perf.depth--;
+            }
+        }
+        const t = performance.now();
+        try {
+            return fn.apply(this, args);
+        } finally {
+            perf.depth--;
+            perf.own += performance.now() - t;
+        }
+    };
+}
+
+function perfStart() {
+    perf.own = 0;
+    perf.stall = 0;
+    perf.startedAt = perf.last = performance.now();
+    clearInterval(perf.timer);
+    // 定时器本该每 200ms 触发一次，晚了多少就是主线程被占了多久；页面在后台时浏览器会降频，不计
+    perf.timer = setInterval(() => {
+        const now = performance.now();
+        if (!document.hidden) perf.stall = Math.max(perf.stall, now - perf.last - STALL_TICK);
+        perf.last = now;
+    }, STALL_TICK);
+}
+
+function perfStop() {
+    clearInterval(perf.timer);
+    perf.timer = 0;
+    if (!perf.startedAt) return '';
+    const now = performance.now();
+    if (!document.hidden) perf.stall = Math.max(perf.stall, now - perf.last - STALL_TICK);
+    const text = `${((now - perf.startedAt) / 1000).toFixed(1)} 秒，页面最长停顿 ${Math.max(0, Math.round(perf.stall))} ms，本扩展占用 ${Math.round(perf.own)} ms`;
+    perf.startedAt = 0;
+    return text;
+}
+
+/** 生成期间停用背景模糊：聊天文字每来一个字，模糊层就要整块重算一次。 */
+export function applyBusy() {
+    const busy = gen.state === 'generating';
+    for (const id of ['nep-float', 'nep-bar', 'nep-panel']) document.getElementById(id)?.classList.toggle('nep-busy', busy);
+}
+
 function notifyGen() {
+    applyBusy();
     for (const fn of gen.listeners) {
         try {
             fn();
@@ -213,6 +269,7 @@ function genStart(source) {
     if (gen.state === 'generating') return;
     gen.state = 'generating';
     genGotMessage = false;
+    perfStart();
     log('开始生成', source);
     setGenLabel('酒馆 · 正在生成…');
 }
@@ -229,7 +286,7 @@ function genFinish(kind) {
     };
     const visible = document.visibilityState === 'visible';
     const revertMs = visible ? 8000 : Math.max(1, Number(settings.statusMinutes) || 3) * 60 * 1000;
-    log('生成结束', kind);
+    log('生成结束', [kind, perfStop()].filter(Boolean).join(' · '));
     setGenLabel(labels[kind] || labels.ended, revertMs);
 }
 
@@ -242,13 +299,13 @@ function bindGenerationEvents() {
     const { eventSource, eventTypes } = SillyTavern.getContext();
     const ignoredTypes = new Set(['quiet']);
 
-    eventSource.on(eventTypes.GENERATION_STARTED, (type, _options, dryRun) => {
+    eventSource.on(eventTypes.GENERATION_STARTED, timed((type, _options, dryRun) => {
         if (dryRun || ignoredTypes.has(type)) return;
         genStart(`事件 ${type || 'normal'}`);
-    });
+    }));
 
     let tokenLogged = false;
-    eventSource.on(eventTypes.STREAM_TOKEN_RECEIVED, () => {
+    eventSource.on(eventTypes.STREAM_TOKEN_RECEIVED, timed(() => {
         gen.lastEventAt = Date.now();
         if (gen.state !== 'generating') {
             tokenLogged = false;
@@ -258,9 +315,9 @@ function bindGenerationEvents() {
             tokenLogged = true;
             log('收到流式 token');
         }
-    });
+    }));
 
-    eventSource.on(eventTypes.MESSAGE_RECEIVED, (messageId, type) => {
+    eventSource.on(eventTypes.MESSAGE_RECEIVED, timed((messageId, type) => {
         if (type === 'impersonate' || type === 'first_message') return;
         log('新消息', `#${messageId} ${type || ''}`);
         tokenLogged = false;
@@ -269,37 +326,37 @@ function bindGenerationEvents() {
             gen.state = 'generating';
             genFinish('done');
         }
-    });
+    }));
 
-    eventSource.on(eventTypes.GENERATION_ENDED, () => {
+    eventSource.on(eventTypes.GENERATION_ENDED, timed(() => {
         log('事件 generation_ended');
         if (gen.state !== 'generating') return;
         // 流式生成时 ENDED 会早于 MESSAGE_RECEIVED，稍等一下再判断
         clearTimeout(genEndTimer);
-        genEndTimer = setTimeout(() => {
+        genEndTimer = setTimeout(timed(() => {
             if (gen.state === 'generating') genFinish(genGotMessage ? 'done' : 'ended');
-        }, 2000);
-    });
+        }), 2000);
+    }));
 
-    eventSource.on(eventTypes.GENERATION_STOPPED, () => {
+    eventSource.on(eventTypes.GENERATION_STOPPED, timed(() => {
         log('事件 generation_stopped');
         genFinish('stopped');
-    });
+    }));
 
     // 备用信号：酒馆在生成期间会给 body 加 data-generating
-    new MutationObserver(() => {
+    new MutationObserver(timed(() => {
         const generating = document.body.dataset.generating === 'true';
         if (generating && gen.state === 'idle') {
             genStart('界面状态');
         } else if (!generating && gen.state === 'generating') {
             clearTimeout(genEndTimer);
-            genEndTimer = setTimeout(() => {
+            genEndTimer = setTimeout(timed(() => {
                 if (gen.state === 'generating' && document.body.dataset.generating !== 'true') {
                     genFinish(genGotMessage ? 'done' : 'ended');
                 }
-            }, 4000);
+            }), 4000);
         }
-    }).observe(document.body, { attributes: true, attributeFilter: ['data-generating'] });
+    })).observe(document.body, { attributes: true, attributeFilter: ['data-generating'] });
 
     document.addEventListener('visibilitychange', () => {
         log(document.visibilityState === 'visible' ? '回到页面' : '离开页面');
@@ -379,7 +436,9 @@ const CSS = `
 --nep-tint:#fbe9e7;--nep-tint-2:#f6d3cf;--nep-tint-ink:#8a1f19;--nep-ok:#1d8a3a;--nep-busy:#b35c00;
 --nep-shadow:0 12px 32px rgba(0,0,0,.16),0 2px 6px rgba(0,0,0,.08);--nep-spring:cubic-bezier(.32,1.28,.48,1);
 font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
--webkit-font-smoothing:antialiased}
+-webkit-font-smoothing:antialiased;
+/* 酒馆主题会给 body 加文字阴影、字距、斜体等，这里一律不继承 */
+font-style:normal;font-weight:400;letter-spacing:0;word-spacing:0;text-shadow:none;text-transform:none;text-indent:0;text-align:left}
 :root[data-nep-glass=dark] #nep-float,:root[data-nep-glass=dark] #nep-bar,:root[data-nep-glass=dark] #nep-panel{
 --nep-glass:rgba(34,34,36,.96);--nep-sheen:rgba(255,255,255,.13);--nep-rim:rgba(255,255,255,.42);--nep-rim-2:rgba(255,255,255,.08);
 --nep-glint:rgba(255,255,255,.16);--nep-depth:rgba(0,0,0,.4);
@@ -406,6 +465,10 @@ inset 0 -14px 24px -18px var(--nep-depth),var(--nep-shadow)}
 :root[data-nep-glassfx=clear][data-nep-glass=dark] #nep-float,:root[data-nep-glassfx=clear][data-nep-glass=dark] #nep-bar{
 --nep-glass:rgba(40,40,44,.52);--nep-sheen:rgba(255,255,255,.1)}
 :root[data-nep-glassfx=clear][data-nep-glass=dark] #nep-panel{--nep-glass:rgba(30,30,32,.8)}}
+/* 生成期间（.nep-busy）停用背景模糊，换成实色的底：聊天文字逐字刷新时不必每帧重算模糊 */
+:root :is(#nep-float,#nep-bar,#nep-panel).nep-busy{-webkit-backdrop-filter:none;backdrop-filter:none}
+:root[data-nep-glassfx=clear] :is(#nep-float,#nep-bar,#nep-panel).nep-busy{--nep-glass:#f8f8fa;--nep-sheen:rgba(255,255,255,.85)}
+:root[data-nep-glassfx=clear][data-nep-glass=dark] :is(#nep-float,#nep-bar,#nep-panel).nep-busy{--nep-glass:#222224;--nep-sheen:rgba(255,255,255,.13)}
 #nep-bar[hidden],#nep-float[hidden]{display:none!important}
 .nep-art{flex:none;position:relative;display:grid;place-items:center;overflow:hidden;background:var(--nep-raise-2);color:var(--nep-ink-2)}
 /* 没有封面时不占位 */
@@ -415,8 +478,6 @@ inset 0 -14px 24px -18px var(--nep-depth),var(--nep-shadow)}
 [data-nep-tone=done]{color:var(--nep-ok)!important}
 [data-nep-tone]::before{content:"";display:inline-block;width:6px;height:6px;margin:0 5px 1px 0;border-radius:50%;
 background:currentColor;vertical-align:middle}
-[data-nep-tone=gen]::before{animation:nep-pulse 1.2s ease-in-out infinite}
-@keyframes nep-pulse{50%{opacity:.25}}
 
 #nep-float{position:fixed;z-index:2910;left:0;top:0;box-sizing:border-box;border-radius:24px;overflow:hidden;
 font-size:13px;line-height:1.25;white-space:nowrap;will-change:transform;contain:layout style;
@@ -440,10 +501,12 @@ box-sizing:border-box;padding:4px 3px 4px 5px;transition:opacity .2s ease}
 #nep-float.nep-card .nep-compact{opacity:0;pointer-events:none;transition-duration:.1s}
 #nep-float .nep-info{display:flex;align-items:center;gap:8px;min-width:0;margin-right:2px;cursor:pointer;outline:0;border-radius:17px}
 #nep-float .nep-compact .nep-art{width:30px;height:30px;border-radius:50%;font-size:12px}
-#nep-float .nep-text{min-width:0;max-width:10.5em}
+/* 没有封面时文字离左边缘太近，左右留白对不上：补到和右侧按键的留白相当 */
+#nep-float.nep-noart .nep-compact{padding-left:15px}
+#nep-float .nep-text{display:flex;flex-direction:column;justify-content:center;min-width:0;max-width:10.5em;height:32px}
 #nep-float .nep-title,#nep-float .nep-sub{overflow:hidden;text-overflow:ellipsis}
-#nep-float .nep-title{font-weight:600}
-#nep-float .nep-sub{font-size:11.5px;color:var(--nep-ink-2)}
+#nep-float .nep-title{font-size:13px;font-weight:600;line-height:16px}
+#nep-float .nep-sub{font-size:11px;line-height:14px;color:var(--nep-ink-2)}
 #nep-float .nep-play{width:32px;height:32px;font-size:14px}
 #nep-float .nep-next{width:30px;height:32px;font-size:13px;color:var(--nep-ink-2)}
 
@@ -473,7 +536,18 @@ animation:nep-wave .9s ease-in-out infinite alternate;animation-play-state:pause
 .nep-mid-track{height:4px;margin-top:16px;border-radius:2px;background:rgba(255,255,255,.22);overflow:hidden}
 .nep-mid-track i{display:block;height:100%;border-radius:2px;background:#fff;transform-origin:0 50%;transform:scaleX(0);transition:transform .9s linear}
 .nep-mid-times{display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:rgba(235,235,245,.6);font-variant-numeric:tabular-nums}
+.nep-mid-main{flex:none;display:flex;flex-direction:column;height:172px}
 .nep-mid-controls{display:flex;align-items:center;justify-content:space-between;margin:auto -8px 0}
+/* 卡片下半：接下来的几首，点一下直接换歌 */
+.nep-mid-list{flex:none;margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.12)}
+.nep-mid-list:empty{display:none}
+.nep-mid-label{height:16px;font-size:11px;font-weight:600;line-height:16px;color:rgba(235,235,245,.45)}
+.nep-mid-row{display:flex;align-items:center;gap:10px;height:44px;margin:0 -8px;padding:0 8px;border-radius:10px;cursor:pointer;outline:0;
+transition:background-color .15s ease}
+.nep-mid-row:active{background:rgba(255,255,255,.14)}
+.nep-mid-row img{flex:none;width:30px;height:30px;border-radius:7px;object-fit:cover;background:rgba(255,255,255,.12)}
+.nep-mid-row b{flex:0 1 auto;min-width:0;font-size:14px;font-weight:500;color:#fff;overflow:hidden;text-overflow:ellipsis}
+.nep-mid-row span{flex:1 1 0;min-width:2.5em;font-size:12px;color:rgba(235,235,245,.5);overflow:hidden;text-overflow:ellipsis}
 #nep-float .nep-mid-controls button{width:50px;height:50px;font-size:22px;color:#fff}
 #nep-float .nep-mid-controls button:active{background:rgba(255,255,255,.14)}
 #nep-float .nep-mid-controls .nep-mid-play{width:58px;height:58px;font-size:30px}
@@ -497,7 +571,7 @@ font-size:15px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 #nep-bar button:active{background:var(--nep-raise-2)}
 #nep-bar .nep-resume{width:auto;padding:0 14px;border-radius:18px;background:var(--nep-raise-2);font:600 13px/1 inherit}
 @media (prefers-reduced-motion:reduce){
-[data-nep-tone=gen]::before,.nep-wave i{animation:none!important}
+.nep-wave i{animation:none!important}
 #nep-float,#nep-float.nep-morph,.nep-compact,#nep-float .nep-mid,.nep-mid-inner{transition-duration:.01s!important}}
 `;
 
@@ -507,7 +581,9 @@ const FLOAT_DEFAULT_POS = { x: 0.5, y: null };
 const ART = '<span class="nep-art"><img alt=""></span>';
 const WAVE = '<span class="nep-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
 // 中间态（播放卡片）的大小：固定，内容不在形变动画里重排
-const midSize = () => ({ w: Math.round(Math.min(384, window.innerWidth - 24)), h: 200 });
+const MID_NEXT_MAX = 3;
+let midRows = 0; // 卡片下半当前列了几首
+const midSize = () => ({ w: Math.round(Math.min(384, window.innerWidth - 24)), h: 200 + (midRows ? 35 + 44 * midRows : 0) });
 const MID_RADIUS = 32;
 const MORPH_MS = 460;
 
@@ -584,14 +660,16 @@ export function applyGlass() {
 }
 
 function watchTheme() {
-    // 酒馆换主题时改的是 <html> / <body> 上的样式变量和 class，合并到下一帧只判断一次
-    let frame = 0;
+    // 酒馆换主题时改的是 <html> / <body> 上的样式变量和 class。读一次主题色要浏览器先把整页样式算完，
+    // 所以攒 400ms 只查一次；生成期间不查（聊天在逐字刷新），等生成结束再补
+    let timer = 0;
     const recheck = () => {
-        if (frame || (settings.glass && settings.glass !== 'auto')) return;
-        frame = requestAnimationFrame(() => {
-            frame = 0;
-            applyGlass();
-        });
+        if (timer || (settings.glass && settings.glass !== 'auto')) return;
+        timer = setTimeout(timed(() => {
+            timer = 0;
+            if (gen.state === 'generating') recheck();
+            else applyGlass();
+        }), 400);
     };
     const observer = new MutationObserver(recheck);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'] });
@@ -641,7 +719,7 @@ function createFloat() {
             <button type="button" class="nep-play" aria-label="播放/暂停"><i class="nep-glyph fa-solid fa-play"></i></button>
             <button type="button" class="nep-next" aria-label="下一首"><i class="fa-solid fa-forward"></i></button>
         </div>
-        <div class="nep-mid" aria-hidden="true"><div class="nep-mid-inner">
+        <div class="nep-mid" aria-hidden="true"><div class="nep-mid-inner"><div class="nep-mid-main">
             <div class="nep-mid-head">${ART}
                 <div class="nep-mid-text" role="button" tabindex="-1" aria-label="打开正在播放">
                     <div class="nep-mid-title"></div><div class="nep-mid-sub"></div></div>
@@ -655,7 +733,8 @@ function createFloat() {
                 <button type="button" class="nep-mid-play" tabindex="-1" aria-label="播放/暂停"><i class="nep-glyph fa-solid fa-play"></i></button>
                 <button type="button" class="nep-mid-next" tabindex="-1" aria-label="下一首"><i class="fa-solid fa-forward"></i></button>
                 <button type="button" class="nep-mid-like" tabindex="-1" aria-label="红心"><i class="fa-solid fa-heart"></i></button>
-            </div>
+            </div></div>
+            <div class="nep-mid-list"></div>
         </div></div>`;
     document.body.appendChild(el);
     const on = (sel, fn) => el.querySelector(sel).addEventListener('click', fn);
@@ -668,6 +747,10 @@ function createFloat() {
     on('.nep-mid-like', () => toggleCurrentLike());
     // 卡片上的列表键、封面、歌名直接进「正在播放」（下面就是接下来播放的歌），点一下就能换歌
     for (const sel of ['.nep-mid-full', '.nep-mid-text', '.nep-mid-head .nep-art']) on(sel, () => openPanel('now'));
+    on('.nep-mid-list', (e) => {
+        const row = e.target.closest('.nep-mid-row');
+        if (row && engineModule) engineModule.playIndex(Number(row.dataset.i));
+    });
     el.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             collapseFloat();
@@ -678,6 +761,18 @@ function createFloat() {
         }
     });
     bindDrag(el);
+    // 胶囊宽度随歌名变。由浏览器在排版完成后把新尺寸报过来再挪位置，不在改文字的当口强制整页重排
+    if ('ResizeObserver' in window) {
+        new ResizeObserver(timed((entries) => {
+            const box = entries[entries.length - 1].borderBoxSize?.[0];
+            const w = Math.round(box?.inlineSize || 0);
+            const h = Math.round(box?.blockSize || 0);
+            if (!w || !h) return;
+            const changed = !compactCache || compactCache.w !== w || compactCache.h !== h;
+            compactCache = { w, h };
+            if (changed && !el.classList.contains('nep-dragging')) placeFloat(el);
+        })).observe(el.querySelector('.nep-compact'));
+    }
     // iOS 滑动时地址栏收起也会触发 resize，合并到下一帧只算一次
     let resizeFrame = 0;
     window.addEventListener('resize', () => {
@@ -691,6 +786,7 @@ function createFloat() {
     return el;
 }
 
+let compactCache = null; // ResizeObserver 报来的胶囊尺寸
 let floatPos = null;
 let floatRect = null; // 收起时的位置和大小，展开时以它为锚点
 
@@ -703,6 +799,7 @@ const clamp01 = (v) => Math.min(1, Math.max(0, Number(v) || 0));
 
 /** 收起状态的胶囊大小：按内容算，不受展开时写在元素上的宽高影响。 */
 function compactSize(el) {
+    if (compactCache) return compactCache;
     const c = el.querySelector('.nep-compact');
     return { w: c.offsetWidth, h: c.offsetHeight };
 }
@@ -797,11 +894,13 @@ export function expandFloat(focus = false) {
         const c = floatRect || compactRect(el);
         el.classList.remove('nep-morph');
         el.classList.add('nep-card');
+        renderMidNext(el);
         const m = layoutMid(el);
         el.style.clipPath = clipTo(c, m);
         void el.offsetWidth;
     } else {
         // 收回动画还没播完又点开：从当前的裁切接着放开
+        renderMidNext(el);
         layoutMid(el);
     }
     el.classList.add('nep-morph');
@@ -840,9 +939,47 @@ export function collapseFloat() {
     }, MORPH_MS);
 }
 
+const escHtml = (t) => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let midSig = null;
+
+/**
+ * 卡片下半列出接下来的几首（列表循环到头后从第一首接上），点一下直接换歌，不用进完整面板。
+ * 返回行数有没有变：变了要重新定卡片的大小。
+ */
+function renderMidNext(el) {
+    const s = engineModule?.getState();
+    const picks = [];
+    if (s && !s.silent && s.index >= 0) {
+        const n = s.queue.length;
+        for (let k = 1; k <= MID_NEXT_MAX && k < n; k++) picks.push((s.index + k) % n);
+    }
+    const sig = picks.map(i => `${i}:${s.queue[i].id}`).join(',');
+    if (sig === midSig) return false;
+    midSig = sig;
+    const tab = el.dataset.state === 'mid' ? 0 : -1;
+    el.querySelector('.nep-mid-list').innerHTML = picks.length
+        ? `<div class="nep-mid-label">接下来播放</div>${picks.map((i) => {
+            const t = s.queue[i];
+            return `<div class="nep-mid-row" role="button" tabindex="${tab}" data-i="${i}" aria-label="播放：${escHtml(t.name)}">`
+                + `<img alt="" ${t.pic ? `src="${escHtml(t.pic)}?param=96y96"` : ''}><b>${escHtml(t.name)}</b><span>${escHtml(t.ar)}</span></div>`;
+        }).join('')}`
+        : '';
+    const changed = midRows !== picks.length;
+    midRows = picks.length;
+    return changed;
+}
+
+/** 卡片开着时队列变了：换掉列表；行数变了就把卡片改到新的高度。 */
+function syncMidNext(el) {
+    if (el.dataset.state !== 'mid' || !renderMidNext(el)) return;
+    layoutMid(el);
+    el.style.clipPath = `inset(0px round ${MID_RADIUS}px)`;
+}
+
 function renderMidProgress() {
     const el = miniBar.float;
     if (!el || el.dataset.state !== 'mid') return;
+    syncMidNext(el);
     const s = engineModule?.getState();
     const silent = !!s?.silent;
     const dur = s && !silent ? (s.duration || (s.track?.dt || 0) / 1000) : 0;
@@ -916,6 +1053,7 @@ function setArt(root, pic) {
         else img.removeAttribute('src');
         art.classList.toggle('nep-has-img', !!src);
     }
+    if (root.id === 'nep-float') root.classList.toggle('nep-noart', !src);
 }
 
 function toneOf(label) {
@@ -1162,8 +1300,10 @@ export const miniBar = {
             updateArtTint(float, this.pic);
             if (midSub.textContent !== midText) midSub.textContent = midText;
             setTone(midSub, tone);
-            // 文字变了宽度会变，重新贴边，免得超出屏幕；刚显示出来时也要摆一次
-            if ((floatResized || !float.style.transform) && !float.classList.contains('nep-dragging')) placeFloat(float);
+            syncMidNext(float);
+            // 刚显示出来时摆一次。之后文字变了宽度会变：有 ResizeObserver 时由它在排版后重新贴边，没有才在这里现量
+            const measureNow = !float.style.transform || (floatResized && !('ResizeObserver' in window));
+            if (measureNow && !float.classList.contains('nep-dragging')) placeFloat(float);
         }
     },
 };
@@ -1225,7 +1365,7 @@ const EXT_DIR = (() => {
 })();
 const EXT_URL = (file) => new URL(file, import.meta.url).href;
 // 这一版前端需要的服务端插件最低版本
-export const SERVER_MIN = '0.6.0';
+export const SERVER_MIN = '0.6.1';
 let runningVersion = '';
 
 async function manifestVersion(url) {
@@ -1307,7 +1447,7 @@ function bindUpdater(el) {
         serverChecked = true;
         const sv = await serverVersion();
         if (sv && versionLess(sv, SERVER_MIN)) {
-            say(`服务端插件版本较旧（${esc(sv)}）。收藏到歌单、从歌单删除需要 ${SERVER_MIN} 以上，旧版会把成功误报为失败。按 README「升级到 0.6」在服务器上覆盖插件文件并重启酒馆。`);
+            say(`服务端插件版本较旧（${esc(sv)}）。更新到 ${SERVER_MIN} 后首页显示个人简介与地区，收藏到歌单不再需要二次核对。按 README「升级到 0.6」在服务器上覆盖插件文件并重启酒馆。`);
         }
     });
     let busy = false;
