@@ -558,8 +558,10 @@ transition:background-color .15s ease}
 #nep-float [data-nep-tone=gen]{color:#ff9f0a!important}
 #nep-float [data-nep-tone=done]{color:#30d158!important}
 
-#nep-bar{position:relative;display:flex;align-items:center;gap:6px;width:100%;box-sizing:border-box;margin:0 0 4px;
-padding:3px 4px 3px 5px;border-radius:22px;font-size:14px;white-space:nowrap}
+/* 主题或别的扩展可能给输入区的子元素关掉指针事件、盖上别的层：这里明确写回来 */
+#nep-bar{position:relative;z-index:2;display:flex;align-items:center;gap:6px;width:100%;box-sizing:border-box;margin:0 0 4px;
+padding:3px 4px 3px 5px;border-radius:22px;font-size:14px;white-space:nowrap;pointer-events:auto;
+touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 #nep-bar>*{position:relative;z-index:1}
 #nep-bar .nep-art{width:30px;height:30px;border-radius:50%;font-size:12px}
 #nep-bar .nep-info{flex:1;min-width:0;overflow:hidden;line-height:1.25;cursor:pointer}
@@ -567,8 +569,9 @@ padding:3px 4px 3px 5px;border-radius:22px;font-size:14px;white-space:nowrap}
 #nep-bar .nep-title{font-weight:600}
 #nep-bar .nep-sub{color:var(--nep-ink-2);font-size:12px}
 #nep-bar button{flex:none;width:36px;height:36px;border:0;border-radius:50%;background:transparent;color:inherit;
-font-size:15px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-#nep-bar button:active{background:var(--nep-raise-2)}
+font-size:15px;cursor:pointer;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+transition:background-color .15s ease,scale .15s ease}
+#nep-bar button:active{background:var(--nep-raise-2);scale:.92}
 #nep-bar .nep-resume{width:auto;padding:0 14px;border-radius:18px;background:var(--nep-raise-2);font:600 13px/1 inherit}
 @media (prefers-reduced-motion:reduce){
 .nep-wave i{animation:none!important}
@@ -676,6 +679,42 @@ function watchTheme() {
     observer.observe(document.body, { attributes: true, attributeFilter: ['style', 'class'] });
 }
 
+// ---------- 点按 ----------
+
+// 触屏上的点按由指针事件直接判定，不等浏览器合成 click：页面上别的脚本拦下触摸事件、
+// 或刚拖动过，click 都可能不来。抬手后补来的那次 click 在捕获阶段丢弃，
+// 否则它会落到刚展开、正好在手指下面的卡片上。
+const TAP_SLOP = 8;
+let ghost = null; // { x, y, until }
+
+function swallowGhostClick(e) {
+    if (!ghost || performance.now() > ghost.until) return;
+    if (Math.hypot(e.clientX - ghost.x, e.clientY - ghost.y) > 30) return;
+    ghost = null;
+    e.stopPropagation();
+    e.preventDefault();
+}
+
+function onTap(node, fn) {
+    let down = null;
+    node.addEventListener('pointerdown', (e) => {
+        down = e.pointerType === 'mouse' ? null : { id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp };
+    });
+    node.addEventListener('pointercancel', () => {
+        down = null;
+    });
+    node.addEventListener('pointerup', (e) => {
+        const d = down;
+        down = null;
+        if (!d || e.pointerId !== d.id || e.timeStamp - d.t > 700) return;
+        if (Math.hypot(e.clientX - d.x, e.clientY - d.y) >= TAP_SLOP) return;
+        ghost = { x: e.clientX, y: e.clientY, until: performance.now() + 500 };
+        fn(e);
+    });
+    // 鼠标、键盘和读屏软件走 click
+    node.addEventListener('click', fn);
+}
+
 function createBar() {
     const el = document.createElement('div');
     el.id = 'nep-bar';
@@ -693,11 +732,11 @@ function createBar() {
     } else {
         document.body.appendChild(el);
     }
-    el.querySelector('.nep-play').addEventListener('click', withEngine(e => e.toggle()));
-    el.querySelector('.nep-resume').addEventListener('click', withEngine(e => e.resume()));
-    el.querySelector('.nep-next').addEventListener('click', withEngine(e => e.next()));
-    el.querySelector('.nep-open').addEventListener('click', () => openPanel());
-    el.querySelector('.nep-info').addEventListener('click', () => openPanel());
+    onTap(el.querySelector('.nep-play'), withEngine(e => e.toggle()));
+    onTap(el.querySelector('.nep-resume'), withEngine(e => e.resume()));
+    onTap(el.querySelector('.nep-next'), withEngine(e => e.next()));
+    onTap(el.querySelector('.nep-open'), () => openPanel());
+    onTap(el.querySelector('.nep-info'), () => openPanel());
     return el;
 }
 
@@ -737,10 +776,10 @@ function createFloat() {
             <div class="nep-mid-list"></div>
         </div></div>`;
     document.body.appendChild(el);
-    const on = (sel, fn) => el.querySelector(sel).addEventListener('click', fn);
+    const on = (sel, fn) => onTap(el.querySelector(sel), fn);
     on('.nep-play', withEngine(e => e.toggle()));
     on('.nep-next', withEngine(e => e.next()));
-    on('.nep-info', (e) => expandFloat(e.detail === 0));
+    on('.nep-info', (e) => expandFloat(e.type === 'click' && e.detail === 0));
     on('.nep-mid-play', withEngine(e => e.toggle()));
     on('.nep-mid-prev', withEngine(e => e.prev()));
     on('.nep-mid-next', withEngine(e => e.next()));
@@ -932,10 +971,15 @@ export function collapseFloat() {
     morphEnd = setTimeout(() => {
         if (el.dataset.state !== 'compact') return;
         el.classList.remove('nep-morph', 'nep-card');
-        el.style.clipPath = '';
         el.style.width = '';
         el.style.height = '';
         placeFloat(el);
+        // 裁切是按卡片大小写的，残留在胶囊大小上时整个元素都落在裁切范围之外：看不见、也点不到
+        // （手机上收回后胶囊变空白、点不动，与此相符）。先换成对胶囊无效果的裁切，隔两帧再去掉：即使浏览器没重画，留下的也是无害的那一个
+        el.style.clipPath = 'inset(0px round 24px)';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            if (!el.classList.contains('nep-card')) el.style.clipPath = '';
+        }));
     }, MORPH_MS);
 }
 
@@ -1553,6 +1597,7 @@ if (globalThis.__neteasePlayerLoaded) {
 } else {
     globalThis.__neteasePlayerLoaded = true;
     injectStyle();
+    document.addEventListener('click', swallowGhostClick, true);
     applyGlass();
     watchTheme();
     likes.listeners.add(() => miniBar.render());
