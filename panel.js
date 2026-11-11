@@ -42,8 +42,7 @@ min-width:0;background:var(--nep-raise);border-radius:12px;padding:9px 12px}
 #nep-panel :is(.nep-btn,.nep-chip):active{transform:scale(.97)}
 @media (hover:hover) and (pointer:fine){
 #nep-panel :is(.nep-row,.nep-act,.nep-set-btn):hover{background:var(--nep-raise)}
-#nep-panel .nep-icon:hover{background:var(--nep-raise)}
-#nep-panel .nep-tab:hover{color:var(--nep-ink)}}
+#nep-panel .nep-icon:hover{background:var(--nep-raise)}}
 
 .nep-top{flex:none;display:flex;align-items:center;gap:2px;height:58px;padding:0 8px 0 20px}
 .nep-top.nep-has-back{padding-left:6px}
@@ -92,13 +91,6 @@ color:var(--nep-ink-2);font-size:28px;box-shadow:0 0 0 3px var(--nep-paper),0 8p
 .nep-group :is(.nep-profile-name,.nep-profile-meta){justify-content:flex-start}
 .nep-group .nep-profile-bio{font-size:14px}
 
-/* 首页分栏：歌单、推荐、排行榜 */
-.nep-tabs{display:flex;gap:24px;margin:0 0 4px;padding:0 2px}
-#nep-panel .nep-tab{position:relative;height:42px;font-size:16px;font-weight:600;color:var(--nep-ink-2);transition:color .15s ease}
-#nep-panel .nep-tab.nep-on{color:var(--nep-ink)}
-.nep-tab::after{content:"";position:absolute;left:50%;bottom:4px;width:18px;height:3px;margin-left:-9px;border-radius:2px;background:var(--nep-accent);
-opacity:0;transform:scaleX(.4);transition:opacity .15s ease,transform .2s var(--nep-ease-out)}
-.nep-tab.nep-on::after{opacity:1;transform:none}
 .nep-sub-head{min-height:30px;margin:10px 0 2px}
 #nep-panel .nep-sub-head h2{font-size:13px;font-weight:600;color:var(--nep-ink-2)}
 /* 歌单一行：封面、名称、曲目数，行尾直接播放 */
@@ -122,8 +114,6 @@ transition:background-color .15s ease}
 /* taste-skill-ignore: 封面上三根静态竖条，表示正在播放 */
 .nep-row.nep-current .nep-lead::after{content:"";position:absolute;inset:0;background:linear-gradient(#fff,#fff) left 16px bottom 14px/3px 12px no-repeat,
 linear-gradient(#fff,#fff) left 22px bottom 14px/3px 18px no-repeat,linear-gradient(#fff,#fff) left 28px bottom 14px/3px 9px no-repeat,rgba(0,0,0,.42)}
-.nep-rank{flex:none;width:46px;text-align:center;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--nep-ink-2)}
-.nep-rank.nep-top3,.nep-row.nep-current .nep-rank{color:var(--nep-accent)}
 .nep-row-main{flex:1;min-width:0}
 .nep-row-title,.nep-row-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nep-row-sub{margin-top:2px;color:var(--nep-ink-2);font-size:13px}
@@ -175,7 +165,7 @@ background:var(--nep-raise);cursor:pointer;overflow:hidden;touch-action:pan-y;us
 .nep-gen{color:var(--nep-busy)!important}
 .nep-done{color:var(--nep-ok)!important}
 
-/* 正在播放：整块面板换成封面色的深色底，白字；中间一张唱片，唱臂在播放时落下。唱片可左右滑动切歌 */
+/* 正在播放：整块面板换成封面色的深色底，白字；中间是封面，可左右滑动切歌 */
 .nep-np-bg{position:absolute;inset:0;z-index:0;border-radius:inherit;overflow:hidden;background:#2a2a2d;pointer-events:none}
 .nep-np-bg img{position:absolute;top:-12%;left:-12%;width:124%;height:124%;object-fit:cover}
 .nep-np-bg::after{content:"";position:absolute;inset:0;background:rgba(20,20,22,.6)}
@@ -183,24 +173,14 @@ background:var(--nep-raise);cursor:pointer;overflow:hidden;touch-action:pan-y;us
 --nep-raise-2:rgba(255,255,255,.18);--nep-raise-3:rgba(255,255,255,.28);--nep-accent:#ff5c52;--nep-busy:#ff9f0a;--nep-ok:#30d158;color:var(--nep-ink)}
 #nep-panel[data-view=now] .nep-top h1{text-align:center;font-size:14px;font-weight:500;color:var(--nep-ink-2)}
 #nep-panel .nep-top .nep-silent.nep-on{color:var(--nep-accent)}
-.nep-np{--nep-disc:min(264px,66vw,32dvh);display:flex;flex-direction:column;min-height:100%;padding:0 4px}
-.nep-np-stage{flex:1 1 auto;display:grid;place-items:center;padding:4px 0 10px;touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:grab}
-.nep-turntable{position:relative;padding-top:calc(var(--nep-disc)*.16)}
-.nep-disc-wrap{width:var(--nep-disc);height:var(--nep-disc);border-radius:50%;box-shadow:0 0 0 8px rgba(255,255,255,.07),0 18px 40px rgba(0,0,0,.35)}
-.nep-disc{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;will-change:transform;
-/* taste-skill-ignore: 唱片反光和纹路 */background:conic-gradient(from 40deg,rgba(255,255,255,0) 0 18%,rgba(255,255,255,.1) 25%,rgba(255,255,255,0) 32% 68%,rgba(255,255,255,.1) 75%,rgba(255,255,255,0) 82%),
-/* taste-skill-ignore: 同上 */repeating-radial-gradient(circle,#0b0b0c 0 2px,#19191b 2px 3px);
-animation:nep-spin 24s linear infinite;animation-play-state:paused}
-.nep-np.nep-playing .nep-disc{animation-play-state:running}
-@keyframes nep-spin{to{transform:rotate(360deg)}}
-.nep-disc-label,.nep-np-cover{grid-area:1/1;width:64%;height:64%;border-radius:50%}
-.nep-disc-label{display:grid;place-items:center;background:var(--nep-accent);color:#fff;font-size:calc(var(--nep-disc)*.14)}
-#nep-panel .nep-np-cover{display:block;object-fit:cover}
+.nep-np{display:flex;flex-direction:column;min-height:100%;padding:0 4px}
+.nep-np-stage{flex:1 1 auto;display:grid;place-items:center;padding:8px 0 14px;touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:grab}
+.nep-np-art{display:grid;place-items:center;width:min(280px,70vw,34dvh);aspect-ratio:1;border-radius:22px;overflow:hidden;background:var(--nep-raise);
+color:var(--nep-ink-2);font-size:52px;box-shadow:0 18px 40px rgba(0,0,0,.35);transform:scale(.88);transition:transform .45s var(--nep-spring)}
+.nep-np.nep-playing .nep-np-art{transform:none}
+.nep-np-art>*{grid-area:1/1}
+#nep-panel .nep-np-cover{display:block;width:100%;height:100%;object-fit:cover}
 #nep-panel .nep-np-cover:not([src]){display:none}
-.nep-arm{position:absolute;z-index:1;top:0;left:calc(50% - var(--nep-disc)*.055);width:calc(var(--nep-disc)*.46);height:calc(var(--nep-disc)*.46);
-overflow:visible;pointer-events:none;transform-origin:12% 12%;transform:rotate(-28deg);transition:transform .5s var(--nep-ease-drawer);
-filter:drop-shadow(0 3px 5px rgba(0,0,0,.35))}
-.nep-np.nep-playing .nep-arm{transform:none}
 .nep-np-info{display:flex;align-items:center;gap:2px;margin-top:8px}
 .nep-np-text{flex:1;min-width:0}
 .nep-np-title{font-size:21px;font-weight:700;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -226,11 +206,11 @@ background:var(--nep-ink);border:0;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:p
 #nep-panel .nep-controls .nep-icon{width:52px;height:52px;font-size:24px}
 #nep-panel .nep-controls .nep-side{width:44px;height:44px;font-size:17px;color:var(--nep-ink-2)}
 #nep-panel .nep-controls .nep-np-toggle{width:68px;height:68px;background:var(--nep-raise-2);font-size:26px}
-/* 还没有歌：唱片位换成图标，给一个去首页的按钮，不显示红心和收藏 */
-.nep-np-blank{display:none;place-items:center;width:min(200px,50vw,25dvh);aspect-ratio:1;border-radius:50%;background:var(--nep-raise);
+/* 还没有歌：封面位换成图标，给一个去首页的按钮，不显示红心和收藏 */
+.nep-np-blank{display:none;place-items:center;width:min(200px,50vw,25dvh);aspect-ratio:1;border-radius:22px;background:var(--nep-raise);
 color:var(--nep-ink-2);font-size:44px}
 .nep-np.nep-empty .nep-np-blank{display:grid}
-#nep-panel .nep-np.nep-empty :is(.nep-turntable,.nep-np-info .nep-icon,.nep-progress,.nep-controls){display:none}
+#nep-panel .nep-np.nep-empty :is(.nep-np-art,.nep-np-info .nep-icon,.nep-progress,.nep-controls){display:none}
 .nep-np.nep-empty .nep-np-stage{cursor:default}
 .nep-np.nep-empty .nep-np-info{margin-top:20px;text-align:center}
 #nep-panel .nep-np-cta{display:none;align-self:center;margin:18px 0 24px}
@@ -284,27 +264,25 @@ word-break:break-all;color:var(--nep-ink-2);max-height:220px;overflow:auto}
 #nep-panel .nep-danger{color:var(--nep-accent)}
 @media (prefers-reduced-motion:reduce){
 #nep-panel,#nep-panel.nep-closing,.nep-sheet,.nep-scrim,.nep-scrim.nep-leaving,.nep-scrim.nep-leaving .nep-sheet{animation-duration:.01s}
-.nep-switch::after,.nep-arm,.nep-tab::after{transition:none}
-.nep-disc{animation:none}}
+.nep-switch::after,.nep-np-art{transition:none}}
 `;
 
 // ---------- 状态 ----------
 
 const state = {
     stack: [{ view: 'home' }],
-    home: { daily: null, dailyError: '', rec: null, recError: '', top: null, topError: '', loadedAt: 0 },
+    home: { daily: null, dailyError: '', loadedAt: 0 },
     search: { keywords: '', tracks: [], hasMore: false, offset: 0, loading: false, error: '' },
     history: (store.get(HISTORY_KEY, []) || []).slice(0, HISTORY_MAX),
     playlists: null,
     playlistsError: '',
     playlistsLoading: false,
-    playlist: null, // { kind: mine|rec|top|daily, meta, tracks, hasMore, loading, error }
+    playlist: null, // { kind: mine|daily, meta, tracks, hasMore, loading, error }
     account: null,
     accountError: '',
     qr: null,
     sheet: null, // { track, i, mode: 'actions' | 'collect' }
-    busyPlay: '', // 首页上正在取歌、准备直接播放的歌单，形如 rec:123
-    homeTab: 'mine', // 首页当前分栏：mine 歌单 | rec 推荐 | top 排行榜
+    busyPlay: '', // 首页上正在取歌、准备直接播放的歌单，形如 mine:123
 };
 
 let root = null;
@@ -337,13 +315,6 @@ const CHEVRON = '<i class="fa-solid fa-chevron-right" aria-hidden="true"></i>';
 function fmtTime(sec) {
     if (!Number.isFinite(sec) || sec < 0) return '0:00';
     return `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
-}
-
-function fmtPlays(n) {
-    n = Number(n) || 0;
-    if (n >= 1e8) return `${(n / 1e8).toFixed(1).replace(/\.0$/, '')}亿`;
-    if (n >= 1e4) return `${Math.round(n / 1e4)}万`;
-    return String(n);
 }
 
 function today() {
@@ -459,10 +430,9 @@ function syncMore() {
     watchMore();
 }
 
-/** 一首歌一行：封面（排行榜用名次），歌名和歌手，行尾「更多」。 */
-function trackRow(t, i, { current = false, rank = false } = {}) {
-    const head = rank ? `<span class="nep-rank${i < 3 ? ' nep-top3' : ''}">${i + 1}</span>` : lead(t.pic);
-    return `<div class="nep-row${current ? ' nep-current' : ''}" data-i="${i}">${head}
+/** 一首歌一行：封面，歌名和歌手，行尾「更多」。 */
+function trackRow(t, i, { current = false } = {}) {
+    return `<div class="nep-row${current ? ' nep-current' : ''}" data-i="${i}">${lead(t.pic)}
         <div class="nep-row-main"><div class="nep-row-title"><span class="nep-name">${esc(t.name)}</span>${isLiked(t.id) ? HEART : ''}${badges(t)}</div>
         <div class="nep-row-sub">${esc(t.ar)}</div></div>
         <button type="button" class="nep-icon" data-act="more" data-i="${i}" aria-label="更多操作：${esc(t.name)}"><i class="fa-solid fa-ellipsis"></i></button></div>`;
@@ -683,7 +653,7 @@ const TITLES = { home: '网易云音乐', search: '搜索', queue: '播放队列
 function renderTop() {
     const v = view().view;
     let title = TITLES[v] || '';
-    if (v === 'playlist') title = { daily: '每日推荐', top: '排行榜', rec: '推荐歌单' }[state.playlist?.kind] || '歌单';
+    if (v === 'playlist') title = state.playlist?.kind === 'daily' ? '每日推荐' : '歌单';
     top.querySelector('h1').textContent = title;
     root.dataset.view = v;
     top.dataset.view = v;
@@ -775,14 +745,13 @@ function syncRowHearts() {
 
 // ---------- 首页 ----------
 
-// 首页：个人资料、分栏标签、三栏内容（歌单 / 推荐 / 排行榜，只显示当前一栏）。
+// 首页：个人资料，下面是每日推荐和账号里的全部歌单。
 // 数据各自到达时只替换对应的那一块；内容没变就不碰 DOM，免得封面重新加载闪一下
-const HOME = ['profile', 'tabs', 'mine', 'rec', 'top'];
-const HOME_TABS = [['mine', '歌单'], ['rec', '推荐'], ['top', '排行榜']];
+const HOME = ['profile', 'mine'];
 const homeHtml = new Map();
 
 function homeRenderer(key) {
-    return { profile: renderProfile, tabs: renderTabs, mine: renderMineSection, rec: renderRecSection, top: renderTopSection }[key];
+    return { profile: renderProfile, mine: renderMineSection }[key];
 }
 
 function renderHome() {
@@ -804,12 +773,6 @@ function updateHome(key) {
     el.outerHTML = html;
 }
 
-function setHomeTab(tab) {
-    if (state.homeTab === tab) return;
-    state.homeTab = tab;
-    for (const key of HOME) updateHome(key);
-}
-
 function renderProfile() {
     const a = state.account;
     const n = a?.loggedIn ? state.playlists?.length : 0;
@@ -820,13 +783,7 @@ function renderProfile() {
     })}</section>`;
 }
 
-function renderTabs() {
-    return `<div class="nep-tabs" data-sec="tabs" role="tablist">${HOME_TABS.map(([key, text]) => `<button type="button" role="tab"
-        class="nep-tab${state.homeTab === key ? ' nep-on' : ''}" data-act="home-tab" data-tab="${key}" aria-selected="${state.homeTab === key}">${text}</button>`).join('')}</div>`;
-}
-
-/** 分栏内容的外壳：不是当前分栏就藏起来。 */
-const pane = (key, inner) => `<section class="nep-sec" data-sec="${key}" role="tabpanel"${state.homeTab === key ? '' : ' hidden'}>${inner}</section>`;
+const pane = (key, inner) => `<section class="nep-sec" data-sec="${key}">${inner}</section>`;
 
 const playGlyph = (busy) => `<i class="fa-solid ${busy ? 'fa-circle-notch fa-spin' : 'fa-play'}"></i>`;
 
@@ -863,7 +820,7 @@ function refreshButton(act) {
 const ROW_BONE = '<div class="nep-row nep-pl-row" aria-hidden="true"><span class="nep-lead"></span><div class="nep-row-main">'
     + '<span class="nep-bone" style="width:50%;height:14px"></span><span class="nep-bone" style="width:24%;height:12px;margin-top:7px"></span></div></div>';
 
-/** 歌单一栏：每日推荐在最上面，下面是账号里的全部歌单。 */
+/** 每日推荐在最上面，下面是账号里的全部歌单。 */
 function renderMineSection() {
     if (state.account?.loggedIn === false) {
         return pane('mine', `<div class="nep-login"><h2>登录网易云</h2><p>登录后显示每日推荐、自己的歌单和红心</p>
@@ -887,28 +844,6 @@ function renderMineSection() {
     return pane('mine', `${dailyRow()}${head}${rows}`);
 }
 
-function renderRecSection() {
-    const h = state.home;
-    if (h.recError) return pane('rec', `<div class="nep-error">${esc(h.recError)}</div><button type="button" class="nep-btn" data-act="reload-home">重试</button>`);
-    if (!h.rec) return pane('rec', ROW_BONE.repeat(5));
-    if (!h.rec.length) return pane('rec', '<div class="nep-hint">暂时没有推荐歌单。</div>');
-    return pane('rec', h.rec.map((p, i) => listRow({
-        act: 'open-rec', playAct: 'play-rec', i, cover: p.cover, name: p.name, busy: state.busyPlay === `rec:${p.id}`,
-        sub: [p.count ? `${p.count} 首` : '', p.plays ? `播放 ${fmtPlays(p.plays)} 次` : ''].filter(Boolean).join(' · '),
-    })).join(''));
-}
-
-function renderTopSection() {
-    const h = state.home;
-    if (h.topError) return pane('top', `<div class="nep-error">${esc(h.topError)}</div><button type="button" class="nep-btn" data-act="reload-home">重试</button>`);
-    if (!h.top) return pane('top', ROW_BONE.repeat(5));
-    if (!h.top.length) return pane('top', '<div class="nep-hint">暂时没有排行榜。</div>');
-    return pane('top', h.top.map((t, i) => listRow({
-        act: 'open-top', playAct: 'play-top', i, cover: t.cover, name: t.name, busy: state.busyPlay === `top:${t.id}`,
-        sub: esc([t.update, t.top[0] ? `${t.top[0].name} - ${t.top[0].ar}` : ''].filter(Boolean).join(' · ')),
-    })).join(''));
-}
-
 // ---------- 歌单页 ----------
 
 function renderPlaylist() {
@@ -917,8 +852,6 @@ function renderPlaylist() {
     const m = pl.meta;
     const metaText = {
         daily: `${pl.tracks.length} 首，每天 6 点更新`,
-        top: [m.update, pl.tracks.length ? `${pl.tracks.length} 首` : ''].filter(Boolean).join('，'),
-        rec: `${m.count} 首${m.plays ? `，播放 ${fmtPlays(m.plays)} 次` : ''}`,
         mine: `${m.count} 首${m.liked || m.mine ? '' : '，收藏的歌单'}`,
     }[pl.kind];
     const d = today();
@@ -935,7 +868,7 @@ function renderPlaylist() {
         </div>`;
     const s = engine.getState();
     const currentId = s.silent ? null : s.track?.id;
-    html += lazyList(`pl:${m.id}`, pl.tracks, (t, i) => trackRow(t, i, { current: t.id === currentId, rank: pl.kind === 'top' }), {
+    html += lazyList(`pl:${m.id}`, pl.tracks, (t, i) => trackRow(t, i, { current: t.id === currentId }), {
         // 滑到底自动拉下一页；出错后停下，等手动点「加载更多」
         hasMore: () => pl.hasMore && !pl.error,
         loadMore: () => loadPlaylistPage(),
@@ -967,8 +900,6 @@ function updatePlaylistView(pl) {
     const refresh = body.querySelector('[data-act=refresh-playlist]');
     if (refresh) refresh.outerHTML = refreshButton('refresh-playlist');
     for (const b of body.querySelectorAll('[data-act=play-all],[data-act=shuffle-all]')) b.disabled = !pl.tracks.length;
-    const meta = body.querySelector('.nep-pl-meta');
-    if (meta && pl.kind === 'top') meta.textContent = [pl.meta.update, `${pl.tracks.length} 首`].filter(Boolean).join('，');
     syncMore();
 }
 
@@ -1036,11 +967,7 @@ function syncQueueView() {
 function renderNowView() {
     return `<div class="nep-np">
         <div class="nep-np-stage" title="左右滑动切歌">
-            <div class="nep-turntable">
-                <svg class="nep-arm" viewBox="0 0 100 100" aria-hidden="true"><path d="M12 12C30 40 48 62 78 70" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/>
-                    <rect x="72" y="63" width="22" height="14" rx="3.5" transform="rotate(15 78 70)" fill="#fff"/><circle cx="12" cy="12" r="9" fill="#fff"/><circle cx="12" cy="12" r="4" fill="#b9b9bd"/></svg>
-                <div class="nep-disc-wrap"><div class="nep-disc"><span class="nep-disc-label" aria-hidden="true"><i class="fa-solid fa-music"></i></span><img class="nep-np-cover" alt=""></div></div>
-            </div>
+            <div class="nep-np-art"><i class="fa-solid fa-music" aria-hidden="true"></i><img class="nep-np-cover" alt=""></div>
             <span class="nep-np-blank" aria-hidden="true"><i class="fa-solid fa-music"></i></span></div>
         <div class="nep-np-info">
             <div class="nep-np-text"><div class="nep-np-title"></div><div class="nep-np-sub"></div></div>
@@ -1104,7 +1031,7 @@ function renderNow() {
         const sub = np.querySelector('.nep-np-sub');
         sub.textContent = subText || '选一个歌单，或者搜一首歌';
         sub.className = `nep-np-sub ${tone}`;
-        setSrc(np.querySelector('.nep-np-cover'), t?.pic ? art(t.pic, 400) : '');
+        setSrc(np.querySelector('.nep-np-cover'), t?.pic ? art(t.pic, 500) : '');
         np.querySelector('.nep-np-toggle i').className = `fa-solid ${playing ? 'fa-pause' : 'fa-play'}`;
         const like = np.querySelector('.nep-like');
         const liked = !!t && isLiked(t.id);
@@ -1138,7 +1065,7 @@ function renderProgress() {
     seek.style.setProperty('--nep-fill', `${seek.value / 10}%`);
 }
 
-// ---------- 滑动切歌：底部常驻条、「正在播放」的唱片 ----------
+// ---------- 滑动切歌：底部常驻条、「正在播放」的封面 ----------
 
 const SWIPE_HOSTS = '.nep-nowbar, .nep-np-stage';
 let swipe = null;
@@ -1149,7 +1076,7 @@ function onSwipeStart(e) {
     const host = e.target.closest(SWIPE_HOSTS);
     const s = engine.getState();
     if (!host || e.target.closest('button') || !s.track || s.silent || swipe) return;
-    const target = host.querySelector(host.classList.contains('nep-nowbar') ? '.nep-nowbar-main' : '.nep-disc-wrap');
+    const target = host.querySelector(host.classList.contains('nep-nowbar') ? '.nep-nowbar-main' : '.nep-np-art');
     swipe = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), dx: 0, active: false, target };
     window.addEventListener('pointermove', onSwipeMove, { passive: false });
     window.addEventListener('pointerup', onSwipeEnd);
@@ -1407,7 +1334,7 @@ function markPlaylistsStale() {
     loadPlaylists({ fresh: true, quiet: true });
 }
 
-/** 首页上推荐歌单、排行榜的播放键：不进歌单页，取到第一页就开始放。 */
+/** 首页歌单行尾的播放键：不进歌单页，取到第一页就开始放。 */
 async function playRemote(kind, meta) {
     if (!meta || state.busyPlay) return;
     // 必须在点击的同步流程里先解锁音频，取完歌再播放 iOS 才放行
@@ -1522,13 +1449,7 @@ function renderSettings() {
 async function loadHome() {
     const h = state.home;
     h.loadedAt = Date.now();
-    h.recError = '';
-    h.topError = '';
-    // 每一块拿到就只替换那一块，不等最慢的那个，也不重画别的块
-    const jobs = [
-        api('home/playlists').then((d) => { h.rec = d.playlists; }, (e) => { if (!h.rec) h.recError = e.message; }).then(() => updateHome('rec')),
-        api('home/toplists').then((d) => { h.top = d.toplists; }, (e) => { if (!h.top) h.topError = e.message; }).then(() => updateHome('top')),
-    ];
+    const jobs = [];
     if (loggedIn()) {
         h.dailyError = '';
         jobs.push(api('home/daily').then((d) => { h.daily = d.tracks; }, (e) => { if (!h.daily) h.dailyError = e.message; }).then(() => updateHome('mine')));
@@ -1855,14 +1776,9 @@ function onClick(e) {
             if (state.home.daily?.length) engine.playTracks(state.home.daily, 0, null);
             return;
         case 'reload-daily':
-        case 'reload-home':
-            state.home = { ...state.home, dailyError: '', recError: '', topError: '' };
+            state.home = { ...state.home, dailyError: '' };
             for (const key of HOME) updateHome(key);
             return void loadHome();
-        case 'open-rec': return void (state.home.rec?.[i] && openPlaylist('rec', state.home.rec[i]));
-        case 'play-rec': return void playRemote('rec', state.home.rec?.[i]);
-        case 'open-top': return void (state.home.top?.[i] && openPlaylist('top', { ...state.home.top[i], count: 0 }));
-        case 'play-top': return void playRemote('top', state.home.top?.[i]);
         case 'reload-playlists':
             state.playlists = null;
             state.playlistsError = '';
@@ -1873,7 +1789,6 @@ function onClick(e) {
                 if (ok) toast('success', '歌单已刷新');
             });
             return;
-        case 'home-tab': return void setHomeTab(actEl.dataset.tab);
         case 'open-playlist': return void (state.playlists?.[i] && openPlaylist('mine', state.playlists[i]));
         case 'play-mine': return void playRemote('mine', state.playlists?.[i]);
         case 'go-home':
