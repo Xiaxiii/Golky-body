@@ -68,6 +68,16 @@ const FAKE_BALL = () => {
   check(capTop2 >= await topLine(), `主题加高顶栏后按新的下沿重算: 胶囊顶 ${capTop2}，顶栏下沿 ${await topLine()}`);
 
   // ---------- 魔棒菜单 ----------
+  // 三种难拦的菜单项：按下即打开、抬手即打开、在文档捕获阶段接收点击
+  await page.evaluate(() => {
+    window.__wandOpened = { pd: 0, te: 0, dc: 0 };
+    const mk = (id, text) => { const it = document.createElement('div'); it.id = id; it.className = 'list-group-item flex-container flexGap5'; it.innerHTML = `<div class="fa-solid fa-mobile extensionsMenuExtensionButton"></div><span>${text}</span>`; document.getElementById('extensionsMenu').appendChild(it); return it; };
+    mk('x-pd', '按下即开').addEventListener('pointerdown', () => window.__wandOpened.pd++);
+    mk('x-te', '抬手即开').addEventListener('touchend', () => window.__wandOpened.te++);
+    mk('x-dc', '文档捕获点击');
+    document.addEventListener('click', (e) => { if (e.target.closest('#x-dc')) window.__wandOpened.dc++; }, true);
+  });
+  await sleep(300);
   await page.tap('#extensionsMenuButton');
   await sleep(400);
   const menu = await page.$eval('#extensionsMenu', m => ({ layout: m.dataset.kfcLayout, display: getComputedStyle(m).display, items: m.querySelectorAll('.kfc-item').length }));
@@ -81,11 +91,17 @@ const FAKE_BALL = () => {
   await page.tap(`#extensionsMenu .kfc-item[data-kfc-key="${firstKey}"]`);
   await page.tap(`#extensionsMenu .kfc-item[data-kfc-key="${firstKey}"]`);
   await sleep(200);
+  for (const id of ['x-pd', 'x-te', 'x-dc']) { await page.tap('#' + id); await sleep(120); }
+  const wand = await page.evaluate(() => ({ opened: window.__wandOpened, states: JSON.parse(localStorage.getItem('kfc:v1:dock')).menuStates }));
+  check(wand.opened.pd + wand.opened.te + wand.opened.dc === 0 && ['#x-pd', '#x-te', '#x-dc'].every(k => wand.states[k] === 'pin'),
+    `编排状态下按下即开、抬手即开、文档捕获点击的菜单项都不打开，且能切换: ${JSON.stringify(wand)}`);
+  for (const id of ['x-pd', 'x-te', 'x-dc']) { await page.tap('#' + id); await page.tap('#' + id); await sleep(120); }
   const panelOpened = await page.$eval('#nep-panel', p => !p.hidden).catch(() => false);
   check(!panelOpened, '编排状态下点菜单项不执行原功能');
   check(JSON.stringify((await state()).menuStates) === JSON.stringify({ '#nep-menu-item': 'pin', [firstKey]: 'hide' }), `点一次置顶、点两次折叠: ${JSON.stringify((await state()).menuStates)}`);
   await page.tap('#extensionsMenu .kfc-ctrl-edit');
   await sleep(200);
+  check(await page.evaluate(() => { document.getElementById('x-pd').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); return window.__wandOpened.pd; }) === 1, '退出编排后按下即开的菜单项恢复正常');
   const order = await page.$eval('#extensionsMenu', m => {
     const vis = [...m.querySelectorAll('.kfc-item')].filter(e => getComputedStyle(e).display !== 'none');
     vis.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top || a.getBoundingClientRect().left - b.getBoundingClientRect().left);

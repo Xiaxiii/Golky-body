@@ -831,17 +831,18 @@ function setMenuEdit(menu, on) {
     const edit = menu.querySelector('.kfc-ctrl-edit span');
     const text = on ? '完成编排' : '编排';
     if (edit && edit.textContent !== text) edit.textContent = text;
+    for (const t of EDIT_TYPES) {
+        if (on) window.addEventListener(t, onEditPress, { capture: true, passive: false });
+        else window.removeEventListener(t, onEditPress, { capture: true, passive: false });
+    }
+    editDown = null;
     tagMenu();
 }
 
-/** 编排状态下点菜单项只切换它的分组，不执行原功能、不关菜单。 */
-function onMenuEditClick(e) {
-    const menu = e.currentTarget;
-    if (!menu.hasAttribute('data-kfc-edit')) return;
-    const item = e.target.closest('.kfc-item');
-    if (!item || !menu.contains(item)) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
+const EDIT_TYPES = ['pointerdown', 'pointerup', 'pointercancel', 'mousedown', 'mouseup', 'click', 'dblclick', 'touchstart', 'touchend', 'contextmenu'];
+let editDown = null;
+
+function cycleMenuItem(item) {
     const key = item.dataset.kfcKey;
     if (!key) return;
     const next = { undefined: 'pin', pin: 'hide', hide: undefined }[prefs.menuStates[key]];
@@ -851,6 +852,29 @@ function onMenuEditClick(e) {
     tagMenu();
 }
 
+/**
+ * 编排状态下点菜单项只切换它的分组，不执行原功能、不关菜单。
+ * 有的扩展在按下或抬手时就打开功能，有的在文档捕获阶段接收点击，所以在 window 捕获阶段（最先一层）
+ * 拦下菜单项上的全部按压事件；切换在抬手时判定，键盘触发的点击（detail 为 0）照样切换。
+ */
+function onEditPress(e) {
+    const menu = document.getElementById('extensionsMenu');
+    if (!menu?.hasAttribute('data-kfc-edit')) return;
+    const item = e.target.closest?.('.kfc-item');
+    if (!item || !menu.contains(item)) return;
+    e.stopImmediatePropagation();
+    if (e.cancelable && e.type !== 'touchstart' && e.type !== 'pointerdown') e.preventDefault();
+    if (e.type === 'pointerdown') {
+        editDown = { id: e.pointerId, x: e.clientX, y: e.clientY, item };
+    } else if (e.type === 'pointerup') {
+        const d = editDown;
+        editDown = null;
+        if (d && d.id === e.pointerId && d.item === item && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 12) cycleMenuItem(item);
+    } else if (e.type === 'click' && e.detail === 0) {
+        cycleMenuItem(item);
+    }
+}
+
 function applyMenu() {
     const menu = document.getElementById('extensionsMenu');
     if (!menu) return false;
@@ -858,7 +882,7 @@ function applyMenu() {
         menuObserver?.disconnect();
         menuObserver = null;
         menu.removeAttribute('data-kfc-layout');
-        menu.removeAttribute('data-kfc-edit');
+        setMenuEdit(menu, false);
         menu.removeAttribute('data-kfc-more');
         menu.querySelectorAll('.kfc-ctrl,.kfc-hint').forEach(n => n.remove());
         return true;
@@ -876,10 +900,6 @@ function applyMenu() {
             if (records.some(r => r.type === 'childList' && !r.target.closest?.('.kfc-ctrl,.kfc-hint'))) scheduleTag();
         });
         menuObserver.observe(menu, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
-        if (!menu.dataset.kfcBound) {
-            menu.dataset.kfcBound = '1';
-            menu.addEventListener('click', onMenuEditClick, true);
-        }
     }
     tagMenu();
     return true;
