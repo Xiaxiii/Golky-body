@@ -76,11 +76,14 @@ border:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.35))!important}
 .kfc-terms dt{font-weight:600}
 .kfc-terms dd{margin:0}
 
-#kfc-pick{position:fixed;left:0!important;top:0!important;width:100vw!important;height:100vh!important;margin:0;padding:0;z-index:2147483000;cursor:crosshair;background:rgba(0,0,0,.08);touch-action:none}
-#kfc-pick-box{position:fixed;z-index:2147483001;pointer-events:none;border:2px solid #e18a24;border-radius:8px;
+/* 拾取层放进浏览器顶层（popover），任何 z-index 都盖不过；不支持 popover 时退回最大 z-index 并挂在 <html> 下 */
+#kfc-pick,#kfc-pick-box,#kfc-pick-bar{position:fixed;margin:0;border:0;padding:0;overflow:visible;color:inherit;z-index:2147483647}
+#kfc-pick{inset:auto;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,.08);cursor:pointer;touch-action:none;
+-webkit-tap-highlight-color:transparent}
+#kfc-pick-box{inset:auto;pointer-events:none;background:transparent;border:2px solid #e18a24;border-radius:8px;
 box-shadow:0 0 0 9999px rgba(0,0,0,.25);transition:all .15s ease}
-/* 酒馆的 body 会成为 fixed 元素的定位参照、且高度为 0，按 bottom 定位会跑到屏幕外，这里一律从顶端算 */
-#kfc-pick-bar{position:fixed;left:50%;top:calc(100vh - 16px);top:calc(100dvh - 16px - env(safe-area-inset-bottom));z-index:2147483002;transform:translate(-50%,-100%);
+#kfc-pick-box:not(.kfc-on){display:none}
+#kfc-pick-bar{inset:auto;left:50%;top:calc(100vh - 16px);top:calc(100dvh - 16px - env(safe-area-inset-bottom));transform:translate(-50%,-100%);
 display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;width:max-content;max-width:calc(100vw - 24px);box-sizing:border-box;
 padding:8px 10px;border-radius:12px;background:rgba(28,28,30,.94);color:#fff;font-size:13px;line-height:1.3;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 #kfc-pick-bar button{font:inherit;color:#fff;background:rgba(255,255,255,.14);border:0;border-radius:8px;padding:6px 10px;cursor:pointer}
@@ -182,8 +185,12 @@ export function selectorFor(el) {
     while (node && node !== document.body && node !== document.documentElement) {
         const part = partFor(node);
         parts.unshift(part);
-        const sel = (part.startsWith('#') ? '' : node.parentElement === document.body ? 'body > ' : '') + parts.join(' > ');
-        if (part.startsWith('#') || node.parentElement === document.body) {
+        // 有的悬浮球直接挂在 <html> 下，不在 body 里
+        const parent = node.parentElement;
+        const atRoot = parent === document.body || parent === document.documentElement;
+        const prefix = part.startsWith('#') ? '' : parent === document.body ? 'body > ' : parent === document.documentElement ? 'html > ' : '';
+        const sel = prefix + parts.join(' > ');
+        if (part.startsWith('#') || atRoot) {
             try {
                 if (document.querySelectorAll(sel).length === 1) return sel;
             } catch { /* 拼出了无效选择器，继续往上 */ }
@@ -259,14 +266,14 @@ function iconHtml(item) {
     return item.icon || `<span class="kfc-letter">${esc((item.name || '?').trim().charAt(0) || '?')}</span>`;
 }
 
-/** 页面上现有的小型悬浮元素（body 下两层以内），供「管理」里一键收纳。 */
+/** 页面上现有的小型悬浮元素（body 和 html 下两层以内），供「管理」里一键收纳。 */
 function scanCandidates() {
     const found = [];
     const known = new Set(prefs.items.map(it => it.sel));
     const nep = document.querySelector(NEP_SEL);
     if (nep && !known.has(NEP_SEL)) found.push({ sel: NEP_SEL, name: '网易云', icon: '<i class="fa-solid fa-music"></i>', el: nep });
     const seen = new Set();
-    for (const el of document.querySelectorAll('body > *, body > * > *')) {
+    for (const el of document.querySelectorAll('body > *, body > * > *, html > :not(head, body), html > :not(head, body) > *')) {
         if (el.id === 'nep-float' || CORE_IDS.has(el.id) || seen.has(el)) continue;
         if (/^(SCRIPT|STYLE|LINK|TEMPLATE|DIALOG|AUDIO|VIDEO|CANVAS|IFRAME)$/.test(el.tagName)) continue;
         if (el.closest('#sheld,#top-settings-holder,#extensionsMenu,#movingDivs,.drawer-content,#toast-container')) continue;
@@ -635,20 +642,51 @@ function startPick() {
     overlay.id = 'kfc-pick';
     const box = document.createElement('div');
     box.id = 'kfc-pick-box';
-    box.hidden = true;
     const bar = document.createElement('div');
     bar.id = 'kfc-pick-bar';
-    document.body.append(overlay, box, bar);
+    // 顶层按打开顺序叠放：遮罩在下，提示条在上
+    const topLayer = typeof overlay.showPopover === 'function';
+    for (const el of [overlay, box, bar]) {
+        if (topLayer) {
+            el.popover = 'manual';
+            document.body.appendChild(el);
+            try {
+                el.showPopover();
+            } catch { /* 个别浏览器拒绝时仍靠最大 z-index */ }
+        } else {
+            document.documentElement.appendChild(el);
+        }
+    }
     let chosen = null;
     let hit = null;
+    let down = null;
     const tip = (text) => {
         bar.innerHTML = `<span>${esc(text)}</span><button type="button" data-k="cancel">取消</button>`;
     };
+    const inBar = (e) => bar.contains(e.target);
+    /**
+     * 拾取期间在 window 捕获阶段拦下提示条以外的所有按压事件：页面上的悬浮球收不到按下、抬起和点击，不会被打开。
+     * 判定点中了谁也在这里做（抬手时），不依赖浏览器是否补发 click。
+     */
+    const block = (e) => {
+        if (inBar(e)) return;
+        e.stopImmediatePropagation();
+        if (e.type === 'click' || e.type === 'mousedown' || e.type === 'mouseup') e.preventDefault();
+        if (e.type === 'pointerdown') down = { id: e.pointerId, x: e.clientX, y: e.clientY };
+        if (e.type === 'pointerup' && down && e.pointerId === down.id) {
+            const d = down;
+            down = null;
+            if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 12) pickAt(e.clientX, e.clientY);
+        }
+    };
+    const TYPES = ['pointerdown', 'pointerup', 'pointercancel', 'mousedown', 'mouseup', 'click', 'dblclick', 'touchstart', 'touchend', 'contextmenu'];
+    for (const t of TYPES) window.addEventListener(t, block, { capture: true, passive: false });
     const finish = () => {
+        for (const t of TYPES) window.removeEventListener(t, block, { capture: true, passive: false });
+        document.removeEventListener('keydown', onKey2, true);
         overlay.remove();
         box.remove();
         bar.remove();
-        document.removeEventListener('keydown', onKey2, true);
     };
     const onKey2 = (e) => {
         if (e.key === 'Escape') finish();
@@ -657,28 +695,28 @@ function startPick() {
         chosen = el;
         const r = el.getBoundingClientRect();
         Object.assign(box.style, { left: `${r.left - 3}px`, top: `${r.top - 3}px`, width: `${r.width + 6}px`, height: `${r.height + 6}px` });
-        box.hidden = false;
+        box.classList.add('kfc-on');
         if (tooBig(el)) {
             bar.innerHTML = '<span>范围过大，不属悬浮元素。请重新点按。</span><button type="button" data-k="cancel">取消</button>';
             return;
         }
-        const canUp = el.parentElement && el.parentElement !== document.body && !tooBig(el.parentElement);
+        const canUp = el.parentElement && el.parentElement !== document.body && el.parentElement !== document.documentElement && !tooBig(el.parentElement);
         bar.innerHTML = `<input type="text" value="${esc(guessName(el))}" aria-label="名称" maxlength="12">
             <button type="button" class="kfc-primary" data-k="ok">收纳</button>
             ${canUp ? '<button type="button" data-k="up">扩至外层</button>' : ''}
             <button type="button" data-k="cancel">取消</button>`;
     };
-    tip('请点按要收纳的悬浮元素');
-    document.addEventListener('keydown', onKey2, true);
-    overlay.addEventListener('click', (e) => {
-        const under = document.elementsFromPoint(e.clientX, e.clientY)
+    const pickAt = (x, y) => {
+        const under = document.elementsFromPoint(x, y)
             .find(n => n !== overlay && n !== box && !bar.contains(n) && n !== document.documentElement && n !== document.body);
         if (!under || under.closest('#kfc-handle,#kfc-panel')) return tip('未选中元素，请重新点按');
         hit = under;
         const root = floatingRoot(under);
         if (CORE_IDS.has(root.id) || root.closest('#sheld,#top-settings-holder')) return tip('酒馆自身界面不可收纳');
         show(root);
-    });
+    };
+    tip('请点按要收纳的悬浮元素');
+    document.addEventListener('keydown', onKey2, true);
     bar.addEventListener('click', (e) => {
         const k = e.target.closest('button')?.dataset.k;
         if (k === 'cancel') return finish();

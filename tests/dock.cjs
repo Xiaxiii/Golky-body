@@ -144,6 +144,30 @@ const FAKE_BALL = () => {
   await sleep(200);
   check(await page.$eval('.mcd-ball', b => getComputedStyle(b).visibility === 'hidden'), '「唤出」：点别处后自动隐去');
 
+  // ---------- 拾取 z-index 最大、挂在 <html> 下、按下即打开的悬浮球 ----------
+  await page.evaluate(() => {
+    const ball = document.createElement('div');
+    ball.id = 'jc-ball';
+    ball.style.cssText = 'position:fixed;left:10px;top:420px;width:56px;height:56px;border-radius:50%;background:#fc0;z-index:2147483647';
+    document.documentElement.appendChild(ball);
+    window.__jcOpened = 0;
+    ball.addEventListener('pointerdown', () => { window.__jcOpened++; });
+    ball.addEventListener('touchstart', () => { window.__jcOpened++; });
+    ball.addEventListener('click', () => { window.__jcOpened++; });
+  });
+  await page.tap('#kfc-handle');
+  await sleep(200);
+  await page.tap('#kfc-panel [data-act=pick]');
+  await sleep(200);
+  await page.touchscreen.tap(38, 448);
+  await sleep(300);
+  check(await page.evaluate(() => window.__jcOpened) === 0 && await page.$('#kfc-pick-bar [data-k=ok]') !== null, '拾取时点按 z-index 最大的悬浮球不会打开它，而是被选中');
+  await page.tap('#kfc-pick-bar [data-k=ok]');
+  await sleep(300);
+  check((await state()).items.some(it => it.sel === '#jc-ball') && await page.$eval('#jc-ball', b => getComputedStyle(b).visibility === 'hidden'), '挂在 <html> 下的悬浮球也能收纳');
+  await page.keyboard.press('Escape');
+  await sleep(200);
+
   // ---------- 收纳播放胶囊 ----------
   await page.tap('#kfc-handle');
   await sleep(200);
@@ -154,7 +178,7 @@ const FAKE_BALL = () => {
   await sleep(200);
   check(await page.$eval('#nep-float', e => getComputedStyle(e).visibility === 'hidden'), '播放胶囊收纳后隐去');
   await page.tap('#kfc-panel [data-act=back]');
-  await page.tap('#kfc-panel .kfc-cell:nth-child(2)');
+  await page.tap('#kfc-panel .kfc-cell[title="网易云"]');
   await sleep(700);
   const card = await page.$eval('#nep-float', e => ({ vis: getComputedStyle(e).visibility, state: e.dataset.state }));
   check(card.vis === 'visible' && card.state === 'mid', `点收纳里的网易云，原地展开播放卡片: ${JSON.stringify(card)}`);
