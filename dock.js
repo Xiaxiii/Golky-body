@@ -781,9 +781,15 @@ function tagMenu() {
     ensureMenuControls(menu);
     const more = menu.querySelector('.kfc-ctrl-more');
     const open = menu.hasAttribute('data-kfc-more');
-    more.hidden = !hidden && !open;
-    more.querySelector('span').textContent = open ? '收起折叠项' : `更多（${hidden}）`;
-    more.querySelector('i').className = `fa-solid ${open ? 'fa-chevron-up' : 'fa-ellipsis'}`;
+    // 只在内容确有变化时写入：写文字会产生一条子节点变动，又触发下面的监听，不比较就会每帧空转
+    const moreHidden = !hidden && !open;
+    if (more.hidden !== moreHidden) more.hidden = moreHidden;
+    const label = open ? '收起折叠项' : `更多（${hidden}）`;
+    const span = more.querySelector('span');
+    if (span.textContent !== label) span.textContent = label;
+    const icon = `fa-solid ${open ? 'fa-chevron-up' : 'fa-ellipsis'}`;
+    const i = more.querySelector('i');
+    if (i.className !== icon) i.className = icon;
 }
 
 function scheduleTag() {
@@ -823,7 +829,8 @@ function ensureMenuControls(menu) {
 function setMenuEdit(menu, on) {
     menu.toggleAttribute('data-kfc-edit', on);
     const edit = menu.querySelector('.kfc-ctrl-edit span');
-    if (edit) edit.textContent = on ? '完成编排' : '编排';
+    const text = on ? '完成编排' : '编排';
+    if (edit && edit.textContent !== text) edit.textContent = text;
     tagMenu();
 }
 
@@ -865,7 +872,8 @@ function applyMenu() {
                 menu.removeAttribute('data-kfc-more');
                 setMenuEdit(menu, false);
             }
-            if (records.some(r => r.type === 'childList')) scheduleTag();
+            // 只理会别的扩展增删菜单项，本模块自己的按钮和提示条里的变动不算
+            if (records.some(r => r.type === 'childList' && !r.target.closest?.('.kfc-ctrl,.kfc-hint'))) scheduleTag();
         });
         menuObserver.observe(menu, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
         if (!menu.dataset.kfcBound) {

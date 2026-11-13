@@ -198,6 +198,15 @@ const FAKE_BALL = () => {
   const hr = await page.$eval('#kfc-handle', b => ({ left: b.getBoundingClientRect().left, top: b.getBoundingClientRect().top, side: b.dataset.side }));
   check(hr.side === 'left' && hr.left === 0 && hr.top >= await topLine(), `把手松手后贴左侧，不高过顶栏下沿: ${JSON.stringify(hr)}`);
 
+  // ---------- 空闲时不空转 ----------
+  const idleMut = await page.evaluate(() => new Promise((res) => {
+    let n = 0;
+    const ob = new MutationObserver((r) => { n += r.length; });
+    ob.observe(document.getElementById('extensionsMenu'), { childList: true, subtree: true, characterData: true, attributes: true });
+    setTimeout(() => { ob.disconnect(); res(n); }, 2000);
+  }));
+  check(idleMut === 0, `空闲 2 秒魔棒菜单没有任何改动（不空转）: ${idleMut}`);
+
   // ---------- 刷新后保持；关闭后恢复原样 ----------
   await load();
   check(await page.$eval('.mcd-ball', b => getComputedStyle(b).visibility === 'hidden'), '刷新后悬浮球仍隐去');

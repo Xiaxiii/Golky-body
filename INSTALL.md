@@ -216,7 +216,7 @@ AbjIQxBfyENYRUUZR16+QBCJ2J8ydlV3f/Iv3HMy690N6kbMfrlbMSNdmSdPnjx53pmVEhUpSXUj
 /rOuKrv+nKcCnn01NewvPOG/FdVVlbsqv66s+rq6uqYG2ysraqr37SIVu/4NT0Y3RI2QXf9Pn0tl
 BJ49CUlPy2LnOUVM0T21ZE9u84Y1cSu7fsO6uWDdfmdOzu+JcUhZFROS0npO1RJUA9DKigq7R6O/
 ZCSN6tB45qzdpqYNSVVE2d/2M0LskZQEvQhS5+AVM0abigj3KNSgok7LkSCYwu5vp5oOqBCgIv5N
-vNJpb1NT9JTYyqjeU9ZVtus/z+c8zjb8mXPsqP9Vld98XVUT1P+Kb2rAJPxH//8Nz969pFjXyR/d
+vMppb1NT9JTYyqjeU9ZVtus/z+c8zjb8mXPsqP9Vld98XVUT1P+Kb2rAJPxH//8Nz969pFjXyR/d
 t+E/Yl5fMofmrfHX5ujT/Nb1/Oxwfmsyu/bUutOf3Xj94e2U9WLevDKcH502R8YKs2/ed/fk7t4w
 rz/L3b5nDVzPrl8FMGgsg1msiXe5R+vm2lrhtw2zb84cffjh7YDV+8x6tZi//Nq8O2QN3MlvrWY3
 73MyrJnZD28HYbA5PW8N/maujOUX3+U2FwszD6yZrUL/sDl0P7vWjdTMzObuLr7v7s2ujZijN7Ib
@@ -270,7 +270,7 @@ XSQpKcDNUki8acvLQ6PKin9xPqNtw3GqlhJBEXnF4sAOZbBPonQ7KrenkPWA5JCvStBDyolRVHlk
 qu+5AhjTiJLkWgoXo5vOsxYmi8VtXARtZsRRTLdnDCshNEDGrbWLMt9sJs52NxayFqewCDmJkWl+
 ac5aGkUZTumE22dunMEsW5NTrkqB2bUmICPZyK1vgbkH3+cqHGjnh7d3ueKCJUMrProME1ivRvNP
 NEP_EOF
-echo "99027aa0be9251843e51de3ff67d33674babe11655a1e26082881d8cc3c15709  /tmp/nep/ext.1" | sha256sum -c --quiet >/dev/null 2>&1 && echo "ext 1/22 OK" || echo "ext 1/22 FAIL: paste this block again"
+echo "db701cd6113d4f6cd6014e9c06c0ac9ed33ad825b3cdbbee14569eb70ae19f18  /tmp/nep/ext.1" | sha256sum -c --quiet >/dev/null 2>&1 && echo "ext 1/22 OK" || echo "ext 1/22 FAIL: paste this block again"
 ```
 
 ## 第 5 步：写入前端扩展（第 2/22 段）
@@ -1375,7 +1375,7 @@ Ne+10uOjmyDjnMevusGWZalos4pB+E2E04UGAIhKAyHluZwuJlw5AW0HFg3RLxTx1NzuCvtoNLc2
 GqpQyGYCz97B1x+IC3XnPpWADaGvXT0NvqKTMKRpwDPClWv2SAvJeYQf4DYEonlhRyHzFjZit0A6
 Tj1LqxBI2DbMsHiYQiI4NlWuOae1PTCAGy63BynYy7xQgKcEVh/KVZNLrDLo1QwKDjlrWDHwQmZT
 ye61w0sT8TBvU1V5XQa+tXZmRMwraAZhaR2IstXIskp8zIVER6vSyJ6w6c6OsKub59AYJ6d2yGk+
-u//y6v/LFPsPpP6j8i//zP+1wf82b9xI/8L/zH/bO15v62j/l/ZN7R2bNmzYuJGev97R0fEvXtu/
+u//y6v/LFPsPpP6j8i//zP+1wf82b9xI/8L/zH/bN7S1t7X/S/um9o5NGzZs3EjPX+9o3/AvXtu/
 /Df8bwRZvuf9y/9L/4eqzNlHS/M/ev81eRb+v7f45NbKzaf+ievLR56hFeH0pwirNXcfJXINiYWy
 ASACCrAcdENpT4l6lk5jyrnln37C7AuEALz8/CmDAPsP5jD52fRJxEaa+hbjDKlG/IPwYujbKcyU
 NncCERLVW+JpjCaDmb3OPsKcCddu+6dPoYlD4gyvXD7tn8IwWuwQ/A/ZIrUHtWAOhQdzK9e+rF17
@@ -1426,7 +1426,7 @@ IHn7I5JehMzzRnbYUrxcSxKcmVtcIlUwIGu2xaRgRLPeLZgku0+YpkHXbTZnh5l9+2dv+cfnEVn8
 8ml/5gVevNElnn/q+uKzWbyUPEXe1LfO+yduIFDO1SnOP4Tclicmmz3gsGyJydEkAMuOxYZMdX8S
 rqtNP82xr1qsf50bRE5QE32P+M3ygyPWPaBeMwwLp2XuGwTv4iQcnNnmwiNM9XNuCueKmzj6oyyA
 NEP_EOF
-echo "0167ee74e0e8b4a33b09f54e056613c4eeca42892ab360655313d58289e53083  /tmp/nep/ext.18" | sha256sum -c --quiet >/dev/null 2>&1 && echo "ext 18/22 OK" || echo "ext 18/22 FAIL: paste this block again"
+echo "75d4947db0692ba79aaf940fdcf0b1c12b4ff174d99e2457e079b6a1d676afac  /tmp/nep/ext.18" | sha256sum -c --quiet >/dev/null 2>&1 && echo "ext 18/22 OK" || echo "ext 18/22 FAIL: paste this block again"
 ```
 
 ## 第 5 步：写入前端扩展（第 19/22 段）
@@ -1609,28 +1609,28 @@ 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
-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
+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
 NEP_EOF
-echo "18d98de02fc2dd6d9c2e3942900ce5fc38ac2fba19b1dd34addf0a2b79a3f71c  /tmp/nep/ext.21" | sha256sum -c --quiet >/dev/null 2>&1 && echo "ext 21/22 OK" || echo "ext 21/22 FAIL: paste this block again"
+echo "dba55ec0ff78aa3b33482976aa733b4ae833b76d2ecf5c0bf523f611494a52ec  /tmp/nep/ext.21" | sha256sum -c --quiet >/dev/null 2>&1 && echo "ext 21/22 OK" || echo "ext 21/22 FAIL: paste this block again"
 ```
 
 ## 第 5 步：写入前端扩展（第 22/22 段）
@@ -1639,20 +1639,24 @@ echo "18d98de02fc2dd6d9c2e3942900ce5fc38ac2fba19b1dd34addf0a2b79a3f71c  /tmp/nep
 
 ```bash
 mkdir -p /tmp/nep && cat > /tmp/nep/ext.22 <<'NEP_EOF'
-TKzMTkHIsX+3t+zMzc73jYfEpq4Oi2pNuNbZiIwGPnahoxyXSwBV2xQjDsIJ/JTXt6TO6cUNfzbc
-ktk6xBwLRS4efuGAiBfIo29UHE0ItW6cnB5fNM9bdO0uP54iciGPA8mLHG9lZ7ENyvHh2QfX6WS6
-nX0Q2zPdA947f1NF2RXUZVUDjBGzNYsst23ZVRStimtSk+Hbt/LBMDFTWuNMKJsyP2P+VMUav7vs
-6ouABCLXkRcnsQnOqJc3SBmUFLJsMO4mPeccowA/fEQ5UFk56E93kaV98cdHsSm2humue3OVzmLG
-a9ZVuIv90WJ7R9OjCH+VyPpR+HQewPmX9Xy+/nhnSl4H1nIxrqvFg8zP4JgJqNc/HR/Uhx1f/tgR
-cOLF4uv51ZhN7CYDU/TbI19hb1nl4MRk95PebJNLx5tlvzCGFWcRNOJ7jGUgsYe0D5SBDztjQDbN
-WjSrY6ocWvZBfC6fVst7dwdqoRSsHQb53naSpG5JXhFK7JqD41AiMOFHrOBPAN+CneYMIyCeQNYY
-l1CNsRczcy/RUwHpND0MjkmjEeYJCMgXkk5KotrFOQICf9J+LiMeWf1tu3YudQopCs3DAiM2tT1W
-fm1ctVYM6uhQvgp6JDYItPLyGtuXfeoMpwXpG92aoSVjBl/lEaLOlaIq1mXgbVdGBrZ2ESsQx2bL
-RYFmarY+j2GyvJxiJRoMEYHJ+aQk3kgqXmk42TJ5lYdb2AkSJEiQIEGCBAkSJEiQIEGC/Df5Bhv/
-YSkAwAMA
+2eAvuKhaC5CSNbw2KM/VRn8ympNc4umnD9NnB066wLnx3edfhx+n7/cRPfH9G0q+eP57D4m0nSeY
+4QTIHjpjGxlz+mX/ggtDxggoHwyzPYwgu0c/DugV8lQX4rX5fOUAuHmmnjRc19YPZfRoYzzs9QJA
+7jqIbk7ZvR5kJWj63yA5bPhrHy2E73TZ8zNgrbtSV/NEeOAHI008nnqqthApAB53+8h8SmXNa1Ns
+yZI81koJgfyCVAa5JbRoDCBlw4avNJbnFxrXlqIAqAyJEwePoSHgjsYJqcBbv3Q1R5JxARoz72FS
+lsXt7wWYgLPXNMt2AsGFh7MhYzyIeLysnxLXMD9dOqHVOS9yn7q6Hqs14lp3dkif4Ws6uvpzuSdQ
+tUMxBQAowU+hKkCaBp1D8WnilcyuJuZY6Bhi8aMDIhwpD+5TYXrBNX/l1u2b91bvrtGzp+F4YmBU
+HmaWF2mwVtzdr1BOGE91uZ+PxudTXTLrA3CVt/WLVFEqD3VZ1wDHFNqaMaXyvGg8CobHNamTJ1gj
+Q397YKZ0kTPnlGVmx4iqiot8FGvohwghRW4sz6+mdOZpVzdIpkQVidgfbg56zohIDqH40wqCEKuD
+RHUXRZogf3xsdS1qmO42H2zkuxnH97aVe5T90caC74xvtPCptKxZiL05ALTw9uzo6OznD4ZwdsF9
+zif6ZPJK5vNwSBbU6z8dH8SHHV94TQ0z+mRy+ubQyH22+sFc/vU1P2HjX+3gxGRvDXq7Ze4lb5b9
+whhWVnhcif8zsIGMVaV9oCpYtTtEiK/hRcMdY2WfswsxPd47OX7p3kAxSoR3OCj8YXcwaFtQYLie
+u+ZgB5URuzCL1uBtAJ/DTnMRUyJWoGiMS6jG2ChbWMtoVQBSTovBPow0whCwgkw7+agiCkLcO8FR
+LN8KMijSgaRjeWddpxwjV04wGKHvNVn4dfDUajGoo10/a+C0WCHQwstrbEH2qTPiRtJ9Op4hljGD
+rzNwUedKUMVlGXD+lZKBrV34lmSZ2XJRYDU3W5+HSFpdTqFY9bfhscv5x2R8mhS8UnGyZUKRh1e4
+lChRokSJEiVKlChRokSJ/gf6AzXTXmEAwAMA
 NEP_EOF
-echo "2a30d58661d8165ca59ed2fe64c0c223c921d0c0427f452dd9cb1a264e29fe1e  /tmp/nep/ext.22" | sha256sum -c --quiet >/dev/null 2>&1 && echo "ext 22/22 OK" || echo "ext 22/22 FAIL: paste this block again"
-if printf '99027aa0be9251843e51de3ff67d33674babe11655a1e26082881d8cc3c15709  /tmp/nep/ext.1\n119fa853b9e28a25552ae08ce31cb88c6e66a0860acaf4914ccec0fe258db635  /tmp/nep/ext.2\n5a5db4bfcbf0f3cd20e53e919deb8acaae71f56c556a9d15e0210008730550e6  /tmp/nep/ext.3\n3f596a80d9d1c8b69ff9c4c347b7bd3aeb285bd3739222964afb333615f6ef03  /tmp/nep/ext.4\n69c1e2242fa618aab17f81e9585f4ea780aa2a3657c4b2b9be02d805b3fc30e1  /tmp/nep/ext.5\n0b29f69db29211ae4793a4b43cf90650debdecbedc2a80376c3fb32cc175312a  /tmp/nep/ext.6\n0ea7fe2e77f73b4abc464565c1b446ee3bb41030f9a951cdf4f90a8251866895  /tmp/nep/ext.7\n3719564289fbdbfcff1d6af0fd776cc3cc391d9cbc6c145315c54a1f356f87a6  /tmp/nep/ext.8\nc0c6e1566de7b143459db9d046d522a738f937401d92e4a1be34c0dffb25d712  /tmp/nep/ext.9\n95c747c4df94fb599d44d063f14eac3492a28be1bcdebc6a4ff96e79fb85165e  /tmp/nep/ext.10\n506fb76db22d758737cd7ac7955f3a4583e2c9bb4eec70654aaf0d9688d8c990  /tmp/nep/ext.11\nbab0c659a8303e074bdb077cc7400988c04549bdde65f259041b52237fff89cb  /tmp/nep/ext.12\nbe4df1c7b77e6c0c127e66d91f91e4774e351d42f3031801efbcdd0f6adbd672  /tmp/nep/ext.13\n29a2ed96fad3c09549b625a6164c20325141850b8ce70ddf18784eee7133e83b  /tmp/nep/ext.14\nceaa9df47d48d44f3a0ac743b0329801c24aabb24d803b40ff5adc288fde7af5  /tmp/nep/ext.15\n098607356cbd0e7a7c4868168436c84a4040df3ce10477edb5fe42b76d47d53c  /tmp/nep/ext.16\nb7fabcf3136824b7b523e61cc2831c46c7a397262bb4250ed66b50daee9e2169  /tmp/nep/ext.17\n0167ee74e0e8b4a33b09f54e056613c4eeca42892ab360655313d58289e53083  /tmp/nep/ext.18\n8a5b1fa22b91432b071584723106a51a4598a3697b772b027a539cc556543683  /tmp/nep/ext.19\n119936d0e1b5fc4133601cf17cbc8a3fc3ce40f2c4e84f7a77b725efc104b31c  /tmp/nep/ext.20\n18d98de02fc2dd6d9c2e3942900ce5fc38ac2fba19b1dd34addf0a2b79a3f71c  /tmp/nep/ext.21\n2a30d58661d8165ca59ed2fe64c0c223c921d0c0427f452dd9cb1a264e29fe1e  /tmp/nep/ext.22\n' | sha256sum -c --quiet >/dev/null 2>&1; then cat /tmp/nep/ext.1 /tmp/nep/ext.2 /tmp/nep/ext.3 /tmp/nep/ext.4 /tmp/nep/ext.5 /tmp/nep/ext.6 /tmp/nep/ext.7 /tmp/nep/ext.8 /tmp/nep/ext.9 /tmp/nep/ext.10 /tmp/nep/ext.11 /tmp/nep/ext.12 /tmp/nep/ext.13 /tmp/nep/ext.14 /tmp/nep/ext.15 /tmp/nep/ext.16 /tmp/nep/ext.17 /tmp/nep/ext.18 /tmp/nep/ext.19 /tmp/nep/ext.20 /tmp/nep/ext.21 /tmp/nep/ext.22 | base64 -d > /tmp/nep/ext.tgz && echo "e9cf52ebc7e5460fd7e5a7705d56efd3f9d9f37574560fb62fceeb54637a58f6  /tmp/nep/ext.tgz" | sha256sum -c --quiet >/dev/null && mkdir -p /root/SillyTavern/public/scripts/extensions/third-party/netease-player && tar xzf /tmp/nep/ext.tgz -C /root/SillyTavern/public/scripts/extensions/third-party/netease-player && ls /root/SillyTavern/public/scripts/extensions/third-party/netease-player/manifest.json /root/SillyTavern/public/scripts/extensions/third-party/netease-player/index.js /root/SillyTavern/public/scripts/extensions/third-party/netease-player/engine.js /root/SillyTavern/public/scripts/extensions/third-party/netease-player/panel.js /root/SillyTavern/public/scripts/extensions/third-party/netease-player/dock.js >/dev/null && rm -f /tmp/nep/ext.* && echo "EXT OK" || echo "EXT FAIL: unpack error"; else printf '99027aa0be9251843e51de3ff67d33674babe11655a1e26082881d8cc3c15709  /tmp/nep/ext.1\n119fa853b9e28a25552ae08ce31cb88c6e66a0860acaf4914ccec0fe258db635  /tmp/nep/ext.2\n5a5db4bfcbf0f3cd20e53e919deb8acaae71f56c556a9d15e0210008730550e6  /tmp/nep/ext.3\n3f596a80d9d1c8b69ff9c4c347b7bd3aeb285bd3739222964afb333615f6ef03  /tmp/nep/ext.4\n69c1e2242fa618aab17f81e9585f4ea780aa2a3657c4b2b9be02d805b3fc30e1  /tmp/nep/ext.5\n0b29f69db29211ae4793a4b43cf90650debdecbedc2a80376c3fb32cc175312a  /tmp/nep/ext.6\n0ea7fe2e77f73b4abc464565c1b446ee3bb41030f9a951cdf4f90a8251866895  /tmp/nep/ext.7\n3719564289fbdbfcff1d6af0fd776cc3cc391d9cbc6c145315c54a1f356f87a6  /tmp/nep/ext.8\nc0c6e1566de7b143459db9d046d522a738f937401d92e4a1be34c0dffb25d712  /tmp/nep/ext.9\n95c747c4df94fb599d44d063f14eac3492a28be1bcdebc6a4ff96e79fb85165e  /tmp/nep/ext.10\n506fb76db22d758737cd7ac7955f3a4583e2c9bb4eec70654aaf0d9688d8c990  /tmp/nep/ext.11\nbab0c659a8303e074bdb077cc7400988c04549bdde65f259041b52237fff89cb  /tmp/nep/ext.12\nbe4df1c7b77e6c0c127e66d91f91e4774e351d42f3031801efbcdd0f6adbd672  /tmp/nep/ext.13\n29a2ed96fad3c09549b625a6164c20325141850b8ce70ddf18784eee7133e83b  /tmp/nep/ext.14\nceaa9df47d48d44f3a0ac743b0329801c24aabb24d803b40ff5adc288fde7af5  /tmp/nep/ext.15\n098607356cbd0e7a7c4868168436c84a4040df3ce10477edb5fe42b76d47d53c  /tmp/nep/ext.16\nb7fabcf3136824b7b523e61cc2831c46c7a397262bb4250ed66b50daee9e2169  /tmp/nep/ext.17\n0167ee74e0e8b4a33b09f54e056613c4eeca42892ab360655313d58289e53083  /tmp/nep/ext.18\n8a5b1fa22b91432b071584723106a51a4598a3697b772b027a539cc556543683  /tmp/nep/ext.19\n119936d0e1b5fc4133601cf17cbc8a3fc3ce40f2c4e84f7a77b725efc104b31c  /tmp/nep/ext.20\n18d98de02fc2dd6d9c2e3942900ce5fc38ac2fba19b1dd34addf0a2b79a3f71c  /tmp/nep/ext.21\n2a30d58661d8165ca59ed2fe64c0c223c921d0c0427f452dd9cb1a264e29fe1e  /tmp/nep/ext.22\n' | sha256sum -c 2>/dev/null | grep -v ': OK$' | sed 's#^#  bad or missing: #'; echo "EXT NOT READY: re-paste the parts listed above, then this block"; fi
+echo "1d1a5bed7fe75caea091f46f693f8e4d338101dfcb9e4c33f6860b98fa0bbeb3  /tmp/nep/ext.22" | sha256sum -c --quiet >/dev/null 2>&1 && echo "ext 22/22 OK" || echo "ext 22/22 FAIL: paste this block again"
+if printf 'db701cd6113d4f6cd6014e9c06c0ac9ed33ad825b3cdbbee14569eb70ae19f18  /tmp/nep/ext.1\n119fa853b9e28a25552ae08ce31cb88c6e66a0860acaf4914ccec0fe258db635  /tmp/nep/ext.2\n5a5db4bfcbf0f3cd20e53e919deb8acaae71f56c556a9d15e0210008730550e6  /tmp/nep/ext.3\n3f596a80d9d1c8b69ff9c4c347b7bd3aeb285bd3739222964afb333615f6ef03  /tmp/nep/ext.4\n69c1e2242fa618aab17f81e9585f4ea780aa2a3657c4b2b9be02d805b3fc30e1  /tmp/nep/ext.5\n0b29f69db29211ae4793a4b43cf90650debdecbedc2a80376c3fb32cc175312a  /tmp/nep/ext.6\n0ea7fe2e77f73b4abc464565c1b446ee3bb41030f9a951cdf4f90a8251866895  /tmp/nep/ext.7\n3719564289fbdbfcff1d6af0fd776cc3cc391d9cbc6c145315c54a1f356f87a6  /tmp/nep/ext.8\nc0c6e1566de7b143459db9d046d522a738f937401d92e4a1be34c0dffb25d712  /tmp/nep/ext.9\n95c747c4df94fb599d44d063f14eac3492a28be1bcdebc6a4ff96e79fb85165e  /tmp/nep/ext.10\n506fb76db22d758737cd7ac7955f3a4583e2c9bb4eec70654aaf0d9688d8c990  /tmp/nep/ext.11\nbab0c659a8303e074bdb077cc7400988c04549bdde65f259041b52237fff89cb  /tmp/nep/ext.12\nbe4df1c7b77e6c0c127e66d91f91e4774e351d42f3031801efbcdd0f6adbd672  /tmp/nep/ext.13\n29a2ed96fad3c09549b625a6164c20325141850b8ce70ddf18784eee7133e83b  /tmp/nep/ext.14\nceaa9df47d48d44f3a0ac743b0329801c24aabb24d803b40ff5adc288fde7af5  /tmp/nep/ext.15\n098607356cbd0e7a7c4868168436c84a4040df3ce10477edb5fe42b76d47d53c  /tmp/nep/ext.16\nb7fabcf3136824b7b523e61cc2831c46c7a397262bb4250ed66b50daee9e2169  /tmp/nep/ext.17\n75d4947db0692ba79aaf940fdcf0b1c12b4ff174d99e2457e079b6a1d676afac  /tmp/nep/ext.18\n8a5b1fa22b91432b071584723106a51a4598a3697b772b027a539cc556543683  /tmp/nep/ext.19\n119936d0e1b5fc4133601cf17cbc8a3fc3ce40f2c4e84f7a77b725efc104b31c  /tmp/nep/ext.20\ndba55ec0ff78aa3b33482976aa733b4ae833b76d2ecf5c0bf523f611494a52ec  /tmp/nep/ext.21\n1d1a5bed7fe75caea091f46f693f8e4d338101dfcb9e4c33f6860b98fa0bbeb3  /tmp/nep/ext.22\n' | sha256sum -c --quiet >/dev/null 2>&1; then cat /tmp/nep/ext.1 /tmp/nep/ext.2 /tmp/nep/ext.3 /tmp/nep/ext.4 /tmp/nep/ext.5 /tmp/nep/ext.6 /tmp/nep/ext.7 /tmp/nep/ext.8 /tmp/nep/ext.9 /tmp/nep/ext.10 /tmp/nep/ext.11 /tmp/nep/ext.12 /tmp/nep/ext.13 /tmp/nep/ext.14 /tmp/nep/ext.15 /tmp/nep/ext.16 /tmp/nep/ext.17 /tmp/nep/ext.18 /tmp/nep/ext.19 /tmp/nep/ext.20 /tmp/nep/ext.21 /tmp/nep/ext.22 | base64 -d > /tmp/nep/ext.tgz && echo "b57a1a83d32f9f9d92a13873db00a94af9b65fb6d7f98afee0802b9443a43d90  /tmp/nep/ext.tgz" | sha256sum -c --quiet >/dev/null && mkdir -p /root/SillyTavern/public/scripts/extensions/third-party/netease-player && tar xzf /tmp/nep/ext.tgz -C /root/SillyTavern/public/scripts/extensions/third-party/netease-player && ls /root/SillyTavern/public/scripts/extensions/third-party/netease-player/manifest.json /root/SillyTavern/public/scripts/extensions/third-party/netease-player/index.js /root/SillyTavern/public/scripts/extensions/third-party/netease-player/engine.js /root/SillyTavern/public/scripts/extensions/third-party/netease-player/panel.js /root/SillyTavern/public/scripts/extensions/third-party/netease-player/dock.js >/dev/null && rm -f /tmp/nep/ext.* && echo "EXT OK" || echo "EXT FAIL: unpack error"; else printf 'db701cd6113d4f6cd6014e9c06c0ac9ed33ad825b3cdbbee14569eb70ae19f18  /tmp/nep/ext.1\n119fa853b9e28a25552ae08ce31cb88c6e66a0860acaf4914ccec0fe258db635  /tmp/nep/ext.2\n5a5db4bfcbf0f3cd20e53e919deb8acaae71f56c556a9d15e0210008730550e6  /tmp/nep/ext.3\n3f596a80d9d1c8b69ff9c4c347b7bd3aeb285bd3739222964afb333615f6ef03  /tmp/nep/ext.4\n69c1e2242fa618aab17f81e9585f4ea780aa2a3657c4b2b9be02d805b3fc30e1  /tmp/nep/ext.5\n0b29f69db29211ae4793a4b43cf90650debdecbedc2a80376c3fb32cc175312a  /tmp/nep/ext.6\n0ea7fe2e77f73b4abc464565c1b446ee3bb41030f9a951cdf4f90a8251866895  /tmp/nep/ext.7\n3719564289fbdbfcff1d6af0fd776cc3cc391d9cbc6c145315c54a1f356f87a6  /tmp/nep/ext.8\nc0c6e1566de7b143459db9d046d522a738f937401d92e4a1be34c0dffb25d712  /tmp/nep/ext.9\n95c747c4df94fb599d44d063f14eac3492a28be1bcdebc6a4ff96e79fb85165e  /tmp/nep/ext.10\n506fb76db22d758737cd7ac7955f3a4583e2c9bb4eec70654aaf0d9688d8c990  /tmp/nep/ext.11\nbab0c659a8303e074bdb077cc7400988c04549bdde65f259041b52237fff89cb  /tmp/nep/ext.12\nbe4df1c7b77e6c0c127e66d91f91e4774e351d42f3031801efbcdd0f6adbd672  /tmp/nep/ext.13\n29a2ed96fad3c09549b625a6164c20325141850b8ce70ddf18784eee7133e83b  /tmp/nep/ext.14\nceaa9df47d48d44f3a0ac743b0329801c24aabb24d803b40ff5adc288fde7af5  /tmp/nep/ext.15\n098607356cbd0e7a7c4868168436c84a4040df3ce10477edb5fe42b76d47d53c  /tmp/nep/ext.16\nb7fabcf3136824b7b523e61cc2831c46c7a397262bb4250ed66b50daee9e2169  /tmp/nep/ext.17\n75d4947db0692ba79aaf940fdcf0b1c12b4ff174d99e2457e079b6a1d676afac  /tmp/nep/ext.18\n8a5b1fa22b91432b071584723106a51a4598a3697b772b027a539cc556543683  /tmp/nep/ext.19\n119936d0e1b5fc4133601cf17cbc8a3fc3ce40f2c4e84f7a77b725efc104b31c  /tmp/nep/ext.20\ndba55ec0ff78aa3b33482976aa733b4ae833b76d2ecf5c0bf523f611494a52ec  /tmp/nep/ext.21\n1d1a5bed7fe75caea091f46f693f8e4d338101dfcb9e4c33f6860b98fa0bbeb3  /tmp/nep/ext.22\n' | sha256sum -c 2>/dev/null | grep -v ': OK$' | sed 's#^#  bad or missing: #'; echo "EXT NOT READY: re-paste the parts listed above, then this block"; fi
 ```
 
 ## 第 6 步：重启酒馆
