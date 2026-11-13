@@ -665,13 +665,17 @@ export function applyGlass() {
 function watchTheme() {
     // 酒馆换主题时改的是 <html> / <body> 上的样式变量和 class。读一次主题色要浏览器先把整页样式算完，
     // 所以攒 400ms 只查一次；生成期间不查（聊天在逐字刷新），等生成结束再补
+    // 换主题也可能改了顶栏高度：同一时机重量顶栏下沿，胶囊重新贴位
     let timer = 0;
     const recheck = () => {
-        if (timer || (settings.glass && settings.glass !== 'auto')) return;
+        if (timer) return;
         timer = setTimeout(timed(() => {
             timer = 0;
-            if (gen.state === 'generating') recheck();
-            else applyGlass();
+            if (gen.state === 'generating') return recheck();
+            if (!settings.glass || settings.glass === 'auto') applyGlass();
+            resetTopLine();
+            const el = miniBar.float;
+            if (el && !el.hidden && !el.classList.contains('nep-dragging')) placeFloat(el);
         }), 400);
     };
     const observer = new MutationObserver(recheck);
@@ -695,7 +699,7 @@ function swallowGhostClick(e) {
     e.preventDefault();
 }
 
-function onTap(node, fn) {
+export function onTap(node, fn) {
     let down = null;
     node.addEventListener('pointerdown', (e) => {
         down = e.pointerType === 'mouse' ? null : { id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp };
@@ -818,6 +822,7 @@ function createFloat() {
         if (resizeFrame) return;
         resizeFrame = requestAnimationFrame(() => {
             resizeFrame = 0;
+            resetTopLine();
             if (el.dataset.state === 'mid') layoutMid(el);
             else placeFloat(el);
         });
@@ -849,18 +854,50 @@ function compactSize(el) {
  */
 function compactRect(el, pos = savedFloatPos()) {
     const { w, h } = compactSize(el);
+    const { minY, maxY } = floatYRange(h);
     const maxX = Math.max(0, window.innerWidth - w - FLOAT_MARGIN * 2);
-    const maxY = Math.max(0, window.innerHeight - h - FLOAT_MARGIN * 2);
     const x = Math.round(FLOAT_MARGIN + clamp01(pos.x) * maxX);
-    let y;
-    if (pos.y == null) {
-        const bar = document.getElementById('top-bar')?.getBoundingClientRect();
-        const top = (bar && bar.height ? bar.bottom : 50) + 6;
-        y = Math.round(Math.min(FLOAT_MARGIN + maxY, Math.max(FLOAT_MARGIN, top)));
-    } else {
-        y = Math.round(FLOAT_MARGIN + clamp01(pos.y) * maxY);
-    }
+    // 没拖过时贴在顶栏下沿
+    const y = Math.round(minY + (pos.y == null ? 0 : clamp01(pos.y)) * maxY);
     return { x, y, w, h };
+}
+
+/** 竖直方向的可移动范围：上限是顶栏下沿，胶囊不会被拖到顶栏上面。 */
+function floatYRange(h) {
+    const line = topLine();
+    let minY = Math.max(FLOAT_MARGIN, line ? line + FLOAT_MARGIN : 0);
+    // 屏幕太矮放不下时退回到只留边距
+    if (minY + h + FLOAT_MARGIN > window.innerHeight) minY = FLOAT_MARGIN;
+    return { minY, maxY: Math.max(0, window.innerHeight - h - FLOAT_MARGIN - minY) };
+}
+
+// ---------- 顶栏下沿 ----------
+
+let topLineCache = null;
+
+/**
+ * 顶栏下沿离屏幕顶端多少像素。各美化主题的顶栏高度不同，按实际排版量：
+ * 取 #top-settings-holder 和 #top-bar 中可见者的最低处，最多算到屏幕高度的四成。
+ * 结果缓存，窗口尺寸或主题变化时作废；拖动途中不重复量。
+ */
+export function topLine() {
+    if (topLineCache != null) return topLineCache;
+    let bottom = 0;
+    for (const id of ['top-settings-holder', 'top-bar']) {
+        const node = document.getElementById(id);
+        if (!node) continue;
+        const r = node.getBoundingClientRect();
+        if (r.width < 1 || r.height < 1 || r.top > window.innerHeight * 0.3) continue;
+        const cs = getComputedStyle(node);
+        if (cs.visibility === 'hidden' || Number(cs.opacity) === 0) continue;
+        bottom = Math.max(bottom, r.bottom);
+    }
+    topLineCache = Math.round(Math.max(0, Math.min(bottom, window.innerHeight * 0.4)));
+    return topLineCache;
+}
+
+export function resetTopLine() {
+    topLineCache = null;
 }
 
 function placeFloat(el, pos = savedFloatPos()) {
@@ -872,10 +909,10 @@ function placeFloat(el, pos = savedFloatPos()) {
 
 function moveFloat(el, left, top) {
     const { w, h } = compactSize(el);
+    const { minY, maxY } = floatYRange(h);
     const maxX = Math.max(0, window.innerWidth - w - FLOAT_MARGIN * 2);
-    const maxY = Math.max(0, window.innerHeight - h - FLOAT_MARGIN * 2);
     const x = maxX ? clamp01((left - FLOAT_MARGIN) / maxX) : 0;
-    const y = maxY ? clamp01((top - FLOAT_MARGIN) / maxY) : 0;
+    const y = maxY ? clamp01((top - minY) / maxY) : 0;
     placeFloat(el, { x, y });
     return { x, y };
 }
@@ -892,7 +929,9 @@ function layoutMid(el) {
     const { w, h } = midSize();
     const x = Math.round(Math.max(FLOAT_MARGIN, Math.min(window.innerWidth - w - FLOAT_MARGIN, c.x + c.w / 2 - w / 2)));
     const down = c.y + c.h / 2 < window.innerHeight / 2;
-    const y = Math.round(Math.max(FLOAT_MARGIN, Math.min(window.innerHeight - h - FLOAT_MARGIN, down ? c.y : c.y + c.h - h)));
+    const line = topLine() + FLOAT_MARGIN;
+    const minY = line + h + FLOAT_MARGIN <= window.innerHeight ? Math.max(FLOAT_MARGIN, line) : FLOAT_MARGIN;
+    const y = Math.round(Math.max(minY, Math.min(window.innerHeight - h - FLOAT_MARGIN, down ? c.y : c.y + c.h - h)));
     el.style.setProperty('--nep-mid-w', `${w}px`);
     el.style.setProperty('--nep-mid-h', `${h}px`);
     el.style.width = `${w}px`;
@@ -1072,6 +1111,8 @@ function bindDrag(el) {
     el.addEventListener('pointerdown', (e) => {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         if (el.dataset.state === 'mid' || el.classList.contains('nep-morph')) return;
+        // 主题可能刚换过：按下时重量一次顶栏下沿，拖动途中沿用
+        resetTopLine();
         start = { id: e.pointerId, x: e.clientX, y: e.clientY, left: floatRect?.x ?? 0, top: floatRect?.y ?? 0 };
         dragged = false;
         pos = null;
@@ -1606,4 +1647,6 @@ if (globalThis.__neteasePlayerLoaded) {
     bindGenerationEvents();
     restoreMiniBar();
     miniBar.apply();
+    // 收纳球和魔棒菜单整理在单独的小文件里，不阻塞上面的启动
+    import('./dock.js').then(m => m.initDock()).catch(err => console.error('[netease-player] 收纳模块加载失败', err));
 }

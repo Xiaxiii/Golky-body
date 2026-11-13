@@ -61,7 +61,7 @@ function chunkSteps(name, label, dest, packed, files) {
 }
 
 const SERVER_FILES = ['package.json', 'index.mjs', 'lib.mjs', 'selftest.mjs'];
-const EXT_FILES = ['manifest.json', 'index.js', 'engine.js', 'panel.js'];
+const EXT_FILES = ['manifest.json', 'index.js', 'engine.js', 'panel.js', 'dock.js'];
 const server = pack('server/netease-player', SERVER_FILES);
 const ext = pack('.', EXT_FILES); // 前端扩展在仓库根目录（酒馆「安装扩展」要求 manifest.json 在根目录）
 
