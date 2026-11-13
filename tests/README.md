@@ -25,7 +25,7 @@ mkdir -p /tmp/songs && (cd /tmp/songs && python3 /path/to/repo/tests/make-songs.
 export NEP_FAKE_STATE=/tmp/nep-fake-state
 node server.js &
 PLAYWRIGHT=/path/to/playwright node ../tests/e2e.cjs
-PLAYWRIGHT=/path/to/playwright node ../tests/dock.cjs   # 收纳球、魔棒菜单整理、胶囊拖动上限
+PLAYWRIGHT=/path/to/playwright node ../tests/dock.cjs   # 收纳球、魔棒菜单编排、胶囊拖动上限
 ```
 
 覆盖：启动阶段的请求数、面板懒加载、搜索播放、换歌（胶囊下一首键、底部条左滑、「正在播放」的列表键进播放队列点歌、歌单行尾直接播放）、Media Session metadata、生成状态（事件和 `data-generating` 备用信号）、
@@ -35,4 +35,4 @@ PLAYWRIGHT=/path/to/playwright node ../tests/dock.cjs   # 收纳球、魔棒菜�
 
 iOS 后台行为（锁屏连续播放、锁屏刷新 metadata、提示音是否打断）只能在 iPhone 上实测，见根目录 README 的测试清单。
 
-`dock.cjs` 覆盖：胶囊拖不到顶栏上面、顶栏变高后按新下沿重算、魔棒菜单宫格、整理状态（不执行原功能、不关菜单、置顶和收起、「更多」）、退出整理后原功能照常、点外面关菜单、点选收纳别的扩展的悬浮球（z-index 高于酒馆界面）、点图标触发原悬浮球且其弹出面板不被关掉、「放出」模式、收纳播放胶囊后原地展开与随卡片收回、把手贴边与上限、刷新后保持、关闭两项后恢复原样。
+`dock.cjs` 覆盖：胶囊拖不到顶栏上面、顶栏变高后按新下沿重算、魔棒菜单保持单列、编排状态（不执行原功能、不关菜单、置顶和折叠、「更多」）、退出编排后原功能照常、点外面关菜单、点选收纳别的扩展的悬浮球（z-index 高于酒馆界面）、点图标触发原悬浮球且其弹出面板不被关掉、「唤出」模式、收纳播放胶囊后原地展开与随卡片收回、把手贴边与上限、刷新后保持、关闭两项后恢复原样。

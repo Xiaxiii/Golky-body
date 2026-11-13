@@ -1,4 +1,4 @@
-// 收纳球、魔棒菜单整理、悬浮胶囊拖动上限的端到端测试。环境与 e2e.cjs 相同（见 tests/README.md），不需要网易云替身的数据。
+// 收纳球、魔棒菜单编排、悬浮胶囊拖动上限的端到端测试。环境与 e2e.cjs 相同（见 tests/README.md），不需要网易云替身的数据。
 const { chromium, devices } = require(process.env.PLAYWRIGHT || 'playwright');
 const B = process.env.ST_URL || 'http://127.0.0.1:8123';
 const OUT = process.env.OUT_DIR || __dirname;
@@ -71,10 +71,10 @@ const FAKE_BALL = () => {
   await page.tap('#extensionsMenuButton');
   await sleep(400);
   const menu = await page.$eval('#extensionsMenu', m => ({ layout: m.dataset.kfcLayout, display: getComputedStyle(m).display, items: m.querySelectorAll('.kfc-item').length }));
-  check(menu.layout === 'grid4' && menu.display === 'grid' && menu.items > 3, `魔棒菜单改为四列宫格: ${JSON.stringify(menu)}`);
+  check(menu.layout === 'list' && menu.display === 'flex' && menu.items > 3, `魔棒菜单保持单列: ${JSON.stringify(menu)}`);
   await page.tap('#extensionsMenu .kfc-ctrl-edit');
   await sleep(200);
-  check(await page.$eval('#extensionsMenu', m => m.hasAttribute('data-kfc-edit') && m.style.display !== 'none'), '点「整理」进入整理状态，菜单不关');
+  check(await page.$eval('#extensionsMenu', m => m.hasAttribute('data-kfc-edit') && m.style.display !== 'none'), '点「编排」进入编排状态，菜单不关');
   await page.tap('#nep-menu-item');
   await sleep(200);
   const firstKey = await page.$eval('#extensionsMenu .kfc-item:not(#nep-menu-item)', e => e.dataset.kfcKey);
@@ -82,8 +82,8 @@ const FAKE_BALL = () => {
   await page.tap(`#extensionsMenu .kfc-item[data-kfc-key="${firstKey}"]`);
   await sleep(200);
   const panelOpened = await page.$eval('#nep-panel', p => !p.hidden).catch(() => false);
-  check(!panelOpened, '整理状态下点菜单项不执行原功能');
-  check(JSON.stringify((await state()).menuStates) === JSON.stringify({ '#nep-menu-item': 'pin', [firstKey]: 'hide' }), `点一次置顶、点两次收起: ${JSON.stringify((await state()).menuStates)}`);
+  check(!panelOpened, '编排状态下点菜单项不执行原功能');
+  check(JSON.stringify((await state()).menuStates) === JSON.stringify({ '#nep-menu-item': 'pin', [firstKey]: 'hide' }), `点一次置顶、点两次折叠: ${JSON.stringify((await state()).menuStates)}`);
   await page.tap('#extensionsMenu .kfc-ctrl-edit');
   await sleep(200);
   const order = await page.$eval('#extensionsMenu', m => {
@@ -91,19 +91,21 @@ const FAKE_BALL = () => {
     vis.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top || a.getBoundingClientRect().left - b.getBoundingClientRect().left);
     return { first: vis[0]?.id, more: m.querySelector('.kfc-ctrl-more span').textContent };
   });
-  check(order.first === 'nep-menu-item' && order.more === '更多 1', `常用项排第一，收起的项进「更多」: ${JSON.stringify(order)}`);
+  check(order.first === 'nep-menu-item' && order.more === '更多（1）', `置顶项排第一，折叠项进「更多」: ${JSON.stringify(order)}`);
   await page.tap('#extensionsMenu .kfc-ctrl-more');
   await sleep(200);
-  check(await page.$eval(`#extensionsMenu .kfc-item[data-kfc-key="${firstKey}"]`, e => getComputedStyle(e).display !== 'none'), '点「更多」显示收起的项');
+  check(await page.$eval(`#extensionsMenu .kfc-item[data-kfc-key="${firstKey}"]`, e => getComputedStyle(e).display !== 'none'), '点「更多」显示折叠项');
   await page.screenshot({ path: OUT + '/dock-1-menu.png' });
-  await page.tap('#chat', { position: { x: 200, y: 300 } });
+  const mr = await page.$eval('#extensionsMenu', m => m.getBoundingClientRect().toJSON());
+  const vw = page.viewportSize().width;
+  await page.touchscreen.tap(mr.right + 10 < vw ? Math.round((mr.right + vw) / 2) : Math.round(vw / 2), mr.top > 120 ? Math.round(mr.top - 30) : Math.round(mr.bottom + 20));
   await sleep(600);
   check(await page.$eval('#extensionsMenu', m => getComputedStyle(m).display === 'none'), '点外面照常关菜单');
   await page.tap('#extensionsMenuButton');
   await sleep(400);
   await page.tap('#nep-menu-item');
   await page.waitForSelector('#nep-panel:not([hidden])', { timeout: 15000 }).catch(() => {});
-  check(await page.$eval('#nep-panel', p => !p.hidden).catch(() => false), '退出整理后点菜单项照常执行原功能');
+  check(await page.$eval('#nep-panel', p => !p.hidden).catch(() => false), '退出编排后点菜单项照常执行原功能');
   await page.keyboard.press('Escape');
   await page.evaluate(() => document.querySelector('#nep-panel [data-act=close], #nep-panel .nep-close')?.click());
   await sleep(600);
@@ -128,7 +130,7 @@ const FAKE_BALL = () => {
   const used = await page.evaluate(() => ({ clicks: window.__ballClicks, pop: document.getElementById('mcd-pop').style.display }));
   check(used.clicks === 1 && used.pop === 'block', `点收纳面板里的图标触发原悬浮球，弹出的面板不被关掉: ${JSON.stringify(used)}`);
 
-  // 放出模式
+  // 唤出模式
   await page.tap('#kfc-handle');
   await sleep(200);
   await page.tap('#kfc-panel [data-act=manage]');
@@ -137,10 +139,10 @@ const FAKE_BALL = () => {
   await page.tap('#kfc-panel [data-act=back]');
   await page.tap('#kfc-panel .kfc-cell');
   await sleep(200);
-  check(await page.$eval('.mcd-ball', b => getComputedStyle(b).visibility === 'visible'), '「放出」：点图标后原悬浮球临时显示');
+  check(await page.$eval('.mcd-ball', b => getComputedStyle(b).visibility === 'visible'), '「唤出」：点图标后原悬浮球原位浮现');
   await page.tap('#chat', { position: { x: 100, y: 450 } });
   await sleep(200);
-  check(await page.$eval('.mcd-ball', b => getComputedStyle(b).visibility === 'hidden'), '「放出」：点别处后自动收回');
+  check(await page.$eval('.mcd-ball', b => getComputedStyle(b).visibility === 'hidden'), '「唤出」：点别处后自动隐去');
 
   // ---------- 收纳播放胶囊 ----------
   await page.tap('#kfc-handle');

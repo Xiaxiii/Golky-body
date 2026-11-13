@@ -1,25 +1,23 @@
 // 收纳 —— 两项功能，各自可在扩展设置里关闭：
 // 1. 收纳球：贴在屏幕边上的小把手。别的扩展的悬浮球（以及本扩展的播放胶囊）收进来后从屏幕上隐去，
 //    点把手展开小面板，再点图标即可使用原来的功能。隐去只用样式，不移动、不删除原元素，原扩展照常运行。
-// 2. 魔棒菜单整理：输入框左边魔法棒弹出的菜单改成宫格；可把常用项置顶、少用项收进「更多」。
-//    只改排列和显隐，不动菜单项本身和它们的点击处理。
+// 2. 魔棒菜单编排：保持原有的单列样式，可把常用项置顶、少用项折叠进「更多」。
+//    只改顺序和显隐，不动菜单项本身和它们的点击处理。
 
 import { store, onTap, topLine, resetTopLine, miniBar, expandFloat, openPanel } from './index.js';
 
 const KEY = 'kfc:v1:dock';
 const DEFAULTS = {
     dock: true, // 收纳球
-    menu: true, // 魔棒菜单整理
-    layout: 'grid4', // grid4 宫格四列 | grid3 宫格三列 | list 列表
+    menu: true, // 魔棒菜单编排
     pos: { side: 'right', y: 0.42 },
     items: [], // { sel, name, icon, path, mode: 'click' | 'peek', on }
-    menuStates: {}, // 菜单项 → 'pin' 常用 | 'hide' 收进更多
+    menuStates: {}, // 菜单项 → 'pin' 置顶 | 'hide' 折叠进「更多」
 };
 
 const prefs = { ...DEFAULTS, ...(store.get(KEY) || {}) };
 const save = () => store.set(KEY, prefs);
 
-export const LAYOUT_OPTIONS = [['grid4', '宫格（四列）'], ['grid3', '宫格（三列）'], ['list', '列表']];
 const NEP_SEL = '#nep-float';
 const EDGE = 6;
 const HANDLE_W = 20;
@@ -74,6 +72,9 @@ background:transparent;border:1px solid var(--SmartThemeBorderColor,rgba(128,128
 border:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.35))!important}
 .kfc-row .kfc-mini[aria-pressed=true]{background:var(--SmartThemeBorderColor,rgba(128,128,128,.3))}
 .kfc-note{margin:6px 2px 0;font-size:11px;line-height:1.45;opacity:.65}
+.kfc-terms{display:grid;grid-template-columns:auto 1fr;gap:3px 8px;margin:8px 2px 0;font-size:11px;line-height:1.45;opacity:.7}
+.kfc-terms dt{font-weight:600}
+.kfc-terms dd{margin:0}
 
 #kfc-pick{position:fixed;left:0!important;top:0!important;width:100vw!important;height:100vh!important;margin:0;padding:0;z-index:2147483000;cursor:crosshair;background:rgba(0,0,0,.08);touch-action:none}
 #kfc-pick-box{position:fixed;z-index:2147483001;pointer-events:none;border:2px solid #e18a24;border-radius:8px;
@@ -87,47 +88,34 @@ padding:8px 10px;border-radius:12px;background:rgba(28,28,30,.94);color:#fff;fon
 #kfc-pick-bar input{width:9em;height:30px;box-sizing:border-box;padding:0 8px;border-radius:8px;border:0;font-size:13px;color:#000;background:#fff}
 #kfc-pick-bar span{max-width:16em}
 
-/* 放出：收纳着的元素临时显示，外面加一圈提示 */
+/* 唤出：隐匿的元素原位浮现，外加一圈提示 */
 .kfc-peek{outline:2px solid #e18a24!important;outline-offset:2px}
 #nep-float.kfc-peek{outline:0!important}
 
-/* ---------- 魔棒菜单整理 ---------- */
+/* ---------- 魔棒菜单编排：保持酒馆原有的单列样式，只调顺序和显隐 ---------- */
+/* 只在菜单显示时生效：酒馆关菜单是把行内样式设为 display:none，这里不能盖过它 */
+#extensionsMenu[data-kfc-layout]:not([style*="display: none"]){display:flex!important;flex-direction:column}
 #extensionsMenu[data-kfc-layout] .kfc-wrap:not([style*="display: none"]){display:contents!important}
+#extensionsMenu[data-kfc-layout] .kfc-item{position:relative}
 #extensionsMenu[data-kfc-layout] .kfc-item[data-kfc-state=pin]{order:-1}
 #extensionsMenu[data-kfc-layout] .kfc-item[data-kfc-state=hide]{order:5}
 #extensionsMenu[data-kfc-layout]:not([data-kfc-more]):not([data-kfc-edit]) .kfc-item[data-kfc-state=hide]{display:none!important}
+#extensionsMenu[data-kfc-layout] .kfc-hint{order:-2}
 #extensionsMenu[data-kfc-layout] .kfc-ctrl-more{order:4}
 #extensionsMenu[data-kfc-layout] .kfc-ctrl-edit{order:6}
-#extensionsMenu[data-kfc-layout] .kfc-hint{order:-2}
 #extensionsMenu[data-kfc-layout] .kfc-ctrl[hidden],#extensionsMenu[data-kfc-layout]:not([data-kfc-edit]) .kfc-hint{display:none!important}
-#extensionsMenu[data-kfc-layout] .kfc-item{position:relative}
-#extensionsMenu[data-kfc-layout] .kfc-ctrl{opacity:.5}
-#extensionsMenu[data-kfc-layout] .kfc-hint{display:flex;align-items:center;gap:8px;padding:6px 6px 8px;font-size:12px;line-height:1.4;opacity:.85;cursor:default}
+#extensionsMenu[data-kfc-layout] .kfc-ctrl{display:flex;align-items:baseline;column-gap:10px;padding:5px}
+#extensionsMenu[data-kfc-layout] .kfc-ctrl>i{width:20px;display:flex;justify-content:center}
+#extensionsMenu[data-kfc-layout] .kfc-hint{display:flex;align-items:center;gap:8px;padding:6px 5px;font-size:calc(var(--mainFontSize) * .85);line-height:1.4;opacity:.85;cursor:default}
 #extensionsMenu[data-kfc-layout] .kfc-hint span{flex:1}
-#extensionsMenu[data-kfc-layout] .kfc-hint b{flex:none;padding:3px 10px;border-radius:6px;border:1px solid var(--SmartThemeBorderColor);cursor:pointer;font-weight:600}
+#extensionsMenu[data-kfc-layout] .kfc-hint b{flex:none;padding:2px 10px;border-radius:6px;border:1px solid var(--SmartThemeBorderColor);cursor:pointer;font-weight:600}
 #extensionsMenu[data-kfc-layout][data-kfc-more] .kfc-item[data-kfc-state=hide]{opacity:.35}
-#extensionsMenu[data-kfc-edit] .kfc-item{opacity:.9;outline:1px dashed var(--SmartThemeBorderColor);outline-offset:-2px;border-radius:8px}
+#extensionsMenu[data-kfc-edit] .kfc-item{opacity:.9;padding-right:44px}
 #extensionsMenu[data-kfc-edit] .kfc-item[data-kfc-state=hide]{opacity:.4}
-#extensionsMenu[data-kfc-edit] .kfc-item[data-kfc-state]::after{position:absolute;top:2px;right:3px;padding:0 4px;border-radius:4px;font-size:10px;line-height:15px;
-background:var(--SmartThemeQuoteColor,#e18a24);color:#fff;opacity:1}
-#extensionsMenu[data-kfc-edit] .kfc-item[data-kfc-state=pin]::after{content:"常用"}
-#extensionsMenu[data-kfc-edit] .kfc-item[data-kfc-state=hide]::after{content:"收起";background:#8e8e93}
-
-/* 只在菜单显示时改成宫格：酒馆关菜单是把行内样式设为 display:none，这里不能盖过它 */
-#extensionsMenu[data-kfc-layout^=grid]:not([style*="display: none"]){display:grid!important}
-#extensionsMenu[data-kfc-layout^=grid]{grid-template-columns:repeat(var(--kfc-cols),minmax(0,1fr));align-content:start;gap:2px;
-width:var(--kfc-menu-w)!important;max-width:calc(100vw - 16px)!important;min-width:0!important;box-sizing:border-box}
-#extensionsMenu[data-kfc-layout=grid4]{--kfc-cols:4;--kfc-menu-w:336px}
-#extensionsMenu[data-kfc-layout=grid3]{--kfc-cols:3;--kfc-menu-w:264px}
-#extensionsMenu[data-kfc-layout^=grid] :is(.kfc-item,.kfc-ctrl){flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;column-gap:0;
-min-width:0;padding:9px 2px 7px;border-radius:8px;text-align:center;font-size:12px;line-height:1.25;white-space:normal}
-#extensionsMenu[data-kfc-layout^=grid] :is(.kfc-item,.kfc-ctrl)>:is(.extensionsMenuExtensionButton,i){flex:none;width:24px;height:24px;font-size:18px;margin:0}
-#extensionsMenu[data-kfc-layout^=grid] :is(.kfc-item,.kfc-ctrl)>span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;
-max-width:100%;overflow-wrap:anywhere}
-#extensionsMenu[data-kfc-layout^=grid] .kfc-hint{grid-column:1/-1}
-#extensionsMenu[data-kfc-layout=list]:not([style*="display: none"]){display:flex!important;flex-direction:column}
-#extensionsMenu[data-kfc-layout=list] .kfc-ctrl{display:flex;align-items:baseline;column-gap:10px;padding:5px}
-#extensionsMenu[data-kfc-layout=list] .kfc-ctrl>i{width:20px;display:flex;justify-content:center}
+#extensionsMenu[data-kfc-edit] .kfc-item[data-kfc-state]::after{position:absolute;top:50%;right:6px;transform:translateY(-50%);padding:0 5px;border-radius:4px;
+font-size:11px;line-height:17px;background:var(--SmartThemeQuoteColor,#e18a24);color:#fff;opacity:1}
+#extensionsMenu[data-kfc-edit] .kfc-item[data-kfc-state=pin]::after{content:"置顶"}
+#extensionsMenu[data-kfc-edit] .kfc-item[data-kfc-state=hide]::after{content:"折叠";background:#8e8e93}
 `;
 
 function injectStyle() {
@@ -307,7 +295,7 @@ function unpeek() {
     peekEl = null;
 }
 
-/** 放出：元素原地显示，点它外面的地方后再收回去。 */
+/** 唤出：元素原位浮现，点它外面的地方后再隐去。 */
 function peek(el) {
     unpeek();
     peekEl = el;
@@ -320,7 +308,7 @@ function peek(el) {
     peekCleanup = () => document.removeEventListener('pointerdown', onDown, true);
 }
 
-/** 播放胶囊：放出后原地展开成播放卡片，卡片收回胶囊时一并收回。 */
+/** 播放胶囊：唤出后原地展开成播放卡片，卡片收回胶囊时一并隐去。 */
 function useNep() {
     const el = miniBar.float;
     if (!el || el.hidden) {
@@ -339,7 +327,7 @@ function useNep() {
     if (el.dataset.state !== 'mid') unpeek(); // 没能展开（比如完整面板开着）
 }
 
-/** 点按：在元素中心依次派发按下、抬起、点击，等同于手指点了它一下。 */
+/** 直达：在元素中心依次派发按下、抬起、点击，等同于手指点了它一下。 */
 function tapElement(root, item) {
     let target = root;
     for (const i of item.path || []) {
@@ -374,7 +362,7 @@ function useItem(item) {
         if (item.sel === NEP_SEL) return useNep();
         const el = document.querySelector(item.sel);
         if (!el) {
-            globalThis.toastr?.info(`「${item.name}」现在不在页面上，可能所属扩展未启用或尚未加载`);
+            globalThis.toastr?.info(`「${item.name}」当前不在页面上，所属扩展可能未启用或未加载`);
             return;
         }
         if (item.mode === 'peek') peek(el);
@@ -554,9 +542,9 @@ function renderPanel() {
     if (panelView === 'manage') return renderManage();
     const cells = prefs.items.map(cellHtml).join('');
     panel.innerHTML = `
-        <div class="kfc-grid">${cells || '<div class="kfc-empty">还没有收纳任何元素。点「添加」后点按屏幕上的悬浮球，或在「管理」里从列表选择。</div>'}</div>
+        <div class="kfc-grid">${cells || '<div class="kfc-empty">尚无收纳。点「拾取」后点按屏幕上的悬浮球，或在「管理」中选取。</div>'}</div>
         <div class="kfc-foot">
-            <button type="button" data-act="pick"><i class="fa-solid fa-crosshairs"></i>添加</button>
+            <button type="button" data-act="pick"><i class="fa-solid fa-crosshairs"></i>拾取</button>
             <button type="button" data-act="manage"><i class="fa-solid fa-sliders"></i>管理</button>
         </div>`;
 }
@@ -566,9 +554,9 @@ function renderManage() {
         <div class="kfc-row">
             <span class="kfc-ico">${iconHtml(it)}</span>
             <input type="text" data-name="${i}" value="${esc(it.name)}" aria-label="名称">
-            ${it.sel === NEP_SEL ? '' : `<button type="button" class="kfc-mini" data-mode="${i}" title="点按：直接触发；放出：显示原元素再点">${it.mode === 'peek' ? '放出' : '点按'}</button>`}
-            <button type="button" class="kfc-mini" data-on="${i}" aria-pressed="${it.on}" title="收纳时从屏幕上隐去">${it.on ? '收纳' : '显示'}</button>
-            <button type="button" class="kfc-mini" data-del="${i}" aria-label="移出收纳"><i class="fa-solid fa-xmark"></i></button>
+            ${it.sel === NEP_SEL ? '' : `<button type="button" class="kfc-mini" data-mode="${i}" title="直达：点图标即触发；唤出：原元素原位浮现">${it.mode === 'peek' ? '唤出' : '直达'}</button>`}
+            <button type="button" class="kfc-mini" data-on="${i}" aria-pressed="${it.on}" title="隐匿：平时不在屏幕上；常驻：平时照常显示">${it.on ? '隐匿' : '常驻'}</button>
+            <button type="button" class="kfc-mini" data-del="${i}" aria-label="移除" title="移除"><i class="fa-solid fa-xmark"></i></button>
         </div>`).join('');
     const found = scanCandidates();
     candidates = found;
@@ -578,12 +566,18 @@ function renderManage() {
             <button type="button" class="kfc-mini" data-add="${i}">收纳</button>
         </div>`).join('');
     panel.innerHTML = `
-        <div class="kfc-head"><button type="button" class="kfc-btn" data-act="back" aria-label="返回"><i class="fa-solid fa-chevron-left"></i></button><b>管理收纳</b></div>
-        ${rows || '<div class="kfc-note">尚未收纳。</div>'}
-        <div class="kfc-sec">页面上的悬浮元素</div>
-        ${foundRows || '<div class="kfc-note">未找到。可点「点选」直接点按屏幕上的元素。</div>'}
-        <div class="kfc-foot"><button type="button" data-act="pick"><i class="fa-solid fa-crosshairs"></i>点选</button></div>
-        <div class="kfc-note">「点按」：点图标即触发原元素。个别悬浮球对此没有反应，改为「放出」：点图标后原元素临时显示，再点它即可，点别处自动收回。「显示」：保留在列表里，但不从屏幕上隐去。</div>`;
+        <div class="kfc-head"><button type="button" class="kfc-btn" data-act="back" aria-label="返回"><i class="fa-solid fa-chevron-left"></i></button><b>收纳管理</b></div>
+        <div class="kfc-sec">已收纳</div>
+        ${rows || '<div class="kfc-note">尚无收纳。</div>'}
+        <div class="kfc-sec">可收纳</div>
+        ${foundRows || '<div class="kfc-note">未发现。可点「拾取」直接点按屏幕上的元素。</div>'}
+        <div class="kfc-foot"><button type="button" data-act="pick"><i class="fa-solid fa-crosshairs"></i>拾取</button></div>
+        <dl class="kfc-terms">
+            <dt>直达</dt><dd>点图标即触发原元素</dd>
+            <dt>唤出</dt><dd>点图标后原元素原位浮现，点别处自动隐去；用于直达无响应的悬浮球</dd>
+            <dt>隐匿</dt><dd>平时不在屏幕上显示</dd>
+            <dt>常驻</dt><dd>平时照常显示，收纳中同样可调用</dd>
+        </dl>`;
 }
 
 let candidates = [];
@@ -665,24 +659,24 @@ function startPick() {
         Object.assign(box.style, { left: `${r.left - 3}px`, top: `${r.top - 3}px`, width: `${r.width + 6}px`, height: `${r.height + 6}px` });
         box.hidden = false;
         if (tooBig(el)) {
-            bar.innerHTML = '<span>这一层范围太大，不像悬浮球。请点按别处。</span><button type="button" data-k="cancel">取消</button>';
+            bar.innerHTML = '<span>范围过大，不属悬浮元素。请重新点按。</span><button type="button" data-k="cancel">取消</button>';
             return;
         }
         const canUp = el.parentElement && el.parentElement !== document.body && !tooBig(el.parentElement);
         bar.innerHTML = `<input type="text" value="${esc(guessName(el))}" aria-label="名称" maxlength="12">
             <button type="button" class="kfc-primary" data-k="ok">收纳</button>
-            ${canUp ? '<button type="button" data-k="up">选外层</button>' : ''}
+            ${canUp ? '<button type="button" data-k="up">扩至外层</button>' : ''}
             <button type="button" data-k="cancel">取消</button>`;
     };
-    tip('点按要收纳的悬浮元素');
+    tip('请点按要收纳的悬浮元素');
     document.addEventListener('keydown', onKey2, true);
     overlay.addEventListener('click', (e) => {
         const under = document.elementsFromPoint(e.clientX, e.clientY)
             .find(n => n !== overlay && n !== box && !bar.contains(n) && n !== document.documentElement && n !== document.body);
-        if (!under || under.closest('#kfc-handle,#kfc-panel')) return tip('没有点中元素，请再试一次');
+        if (!under || under.closest('#kfc-handle,#kfc-panel')) return tip('未选中元素，请重新点按');
         hit = under;
         const root = floatingRoot(under);
-        if (CORE_IDS.has(root.id) || root.closest('#sheld,#top-settings-holder')) return tip('这是酒馆自身的界面，不能收纳');
+        if (CORE_IDS.has(root.id) || root.closest('#sheld,#top-settings-holder')) return tip('酒馆自身界面不可收纳');
         show(root);
     });
     bar.addEventListener('click', (e) => {
@@ -692,7 +686,7 @@ function startPick() {
         if (k !== 'ok' || !chosen) return;
         const sel = chosen.id === 'nep-float' ? NEP_SEL : selectorFor(chosen);
         if (!sel) {
-            tip('无法为这个元素生成稳定的定位，试试「选外层」');
+            tip('无法稳定定位该元素，请「扩至外层」');
             return;
         }
         const name = (bar.querySelector('input')?.value || '').trim().slice(0, 12) || guessName(chosen);
@@ -703,7 +697,7 @@ function startPick() {
     });
 }
 
-// ---------- 魔棒菜单整理 ----------
+// ---------- 魔棒菜单编排 ----------
 
 let menuObserver = null;
 let menuFrame = 0;
@@ -750,7 +744,7 @@ function tagMenu() {
     const more = menu.querySelector('.kfc-ctrl-more');
     const open = menu.hasAttribute('data-kfc-more');
     more.hidden = !hidden && !open;
-    more.querySelector('span').textContent = open ? '收起' : `更多 ${hidden}`;
+    more.querySelector('span').textContent = open ? '收起折叠项' : `更多（${hidden}）`;
     more.querySelector('i').className = `fa-solid ${open ? 'fa-chevron-up' : 'fa-ellipsis'}`;
 }
 
@@ -762,7 +756,7 @@ function ensureMenuControls(menu) {
     if (menu.querySelector('.kfc-ctrl-edit')) return;
     const hint = document.createElement('div');
     hint.className = 'kfc-hint';
-    hint.innerHTML = '<span>点按菜单项切换：常用（置顶）→ 收起（放进「更多」）→ 恢复</span><b role="button" tabindex="0">完成</b>';
+    hint.innerHTML = '<span>点按条目依次切换：置顶 → 折叠 → 还原</span><b role="button" tabindex="0">完成</b>';
     const more = document.createElement('div');
     more.className = 'kfc-ctrl kfc-ctrl-more list-group-item interactable';
     more.tabIndex = 0;
@@ -770,7 +764,7 @@ function ensureMenuControls(menu) {
     const edit = document.createElement('div');
     edit.className = 'kfc-ctrl kfc-ctrl-edit list-group-item interactable';
     edit.tabIndex = 0;
-    edit.innerHTML = '<i class="fa-solid fa-table-cells-large"></i><span>整理</span>';
+    edit.innerHTML = '<i class="fa-solid fa-sliders"></i><span>编排</span>';
     menu.append(hint, more, edit);
     // 这几格只在菜单内部切换状态：拦下冒泡，酒馆「点任意处关菜单」的处理就不会把菜单关掉
     more.addEventListener('click', (e) => {
@@ -791,11 +785,11 @@ function ensureMenuControls(menu) {
 function setMenuEdit(menu, on) {
     menu.toggleAttribute('data-kfc-edit', on);
     const edit = menu.querySelector('.kfc-ctrl-edit span');
-    if (edit) edit.textContent = on ? '完成' : '整理';
+    if (edit) edit.textContent = on ? '完成编排' : '编排';
     tagMenu();
 }
 
-/** 整理状态下点菜单项只切换它的分组，不执行原功能、不关菜单。 */
+/** 编排状态下点菜单项只切换它的分组，不执行原功能、不关菜单。 */
 function onMenuEditClick(e) {
     const menu = e.currentTarget;
     if (!menu.hasAttribute('data-kfc-edit')) return;
@@ -824,9 +818,9 @@ function applyMenu() {
         menu.querySelectorAll('.kfc-ctrl,.kfc-hint').forEach(n => n.remove());
         return true;
     }
-    menu.dataset.kfcLayout = LAYOUT_OPTIONS.some(([v]) => v === prefs.layout) ? prefs.layout : 'grid4';
+    menu.dataset.kfcLayout = 'list';
     if (!menuObserver) {
-        // 别的扩展陆续往菜单里加项；菜单关上（display:none）时退出整理和「更多」
+        // 别的扩展陆续往菜单里加项；菜单关上（display:none）时退出编排和「更多」
         menuObserver = new MutationObserver((records) => {
             if (records.some(r => r.type === 'attributes') && menu.style.display === 'none'
                 && (menu.hasAttribute('data-kfc-edit') || menu.hasAttribute('data-kfc-more'))) {
@@ -891,23 +885,18 @@ function addSettingsDrawer() {
             <b>收纳</b><div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
         </div>
         <div class="inline-drawer-content">
-            <label class="checkbox_label"><input type="checkbox" data-opt="dock"><span>收纳球（贴边的小把手，收纳悬浮球和播放胶囊）</span></label>
-            <label class="checkbox_label"><input type="checkbox" data-opt="menu"><span>整理魔棒菜单</span></label>
-            <label for="kfc-settings-layout">魔棒菜单排列</label>
-            <select id="kfc-settings-layout" class="text_pole">${LAYOUT_OPTIONS.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>
+            <label class="checkbox_label"><input type="checkbox" data-opt="dock"><span>收纳球：贴边把手，收纳悬浮球与播放胶囊</span></label>
+            <label class="checkbox_label"><input type="checkbox" data-opt="menu"><span>魔棒菜单编排：常用项置顶，少用项折叠</span></label>
             <div class="flex-container">
-                <div class="menu_button menu_button_icon" data-act="reset"><i class="fa-solid fa-arrows-to-dot"></i><span>收纳球回到右侧</span></div>
+                <div class="menu_button menu_button_icon" data-act="reset"><i class="fa-solid fa-arrows-to-dot"></i><span>收纳球归位</span></div>
             </div>
-            <small>收纳：点收纳球 →「添加」→ 点按屏幕上的悬浮球。整理菜单：打开魔棒菜单 →「整理」→ 点按各项切换常用或收起。</small>
+            <small>收纳：点收纳球 →「拾取」→ 点按屏幕上的悬浮球。编排：打开魔棒菜单 →「编排」→ 点按条目切换置顶或折叠。</small>
         </div>`;
     host.appendChild(el);
     for (const box of el.querySelectorAll('[data-opt]')) {
         box.checked = !!prefs[box.dataset.opt];
         box.addEventListener('change', () => setDockOption(box.dataset.opt, box.checked));
     }
-    const layout = el.querySelector('#kfc-settings-layout');
-    layout.value = prefs.layout;
-    layout.addEventListener('change', () => setDockOption('layout', layout.value));
     el.querySelector('[data-act=reset]').addEventListener('click', () => resetHandle());
 }
 
