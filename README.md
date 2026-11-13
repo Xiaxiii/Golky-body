@@ -42,9 +42,9 @@ https://github.com/Xiaxiii/Golky-body-
 2. 在服务器上用扩展目录里的新文件覆盖服务端插件，再重启酒馆（依赖没变，不用重新 `npm install`）：
    ```bash
    cd /root/SillyTavern
-   SRC=$(find data public/scripts/extensions/third-party -maxdepth 4 -type d -path '*Golky-body*/server/netease-player' | head -1)
-   cp "$SRC"/*.mjs "$SRC"/package.json plugins/netease-player/ && pm2 restart start
+   SRC=$(find data public/scripts/extensions/third-party -maxdepth 7 -path '*/server/netease-player/package.json' -exec grep -l '"version": "0.6.2"' {} + 2>/dev/null | head -1 | xargs -r dirname); echo "SRC=$SRC"; [ -n "$SRC" ] && cp "$SRC"/*.mjs "$SRC"/package.json plugins/netease-player/ && pm2 restart start >/dev/null && grep '"version"' plugins/netease-player/package.json && echo UPDATE OK || echo UPDATE FAIL
    ```
+   命令只认 0.6.2 版的插件文件，扩展目录里有多份时不会拿错。最后一行为 `UPDATE OK` 即完成；为 `UPDATE FAIL` 且 `SRC=` 后为空，说明前端尚未更新到含 0.6.2 插件的版本，先做第 1 步。
    也可以按 INSTALL.md 整段重新粘贴，登录状态不受影响。
 
 从 0.4 升级的，同样按上面两步操作。
